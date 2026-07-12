@@ -3132,12 +3132,18 @@ function stampTour(x,gy,z){                        // tour de guet en pierre tai
   setBlock(x,gy+9,z,TORCH);
 }
 function stampFerme(x,gy,z){
-  fillB(x-2,x+2,gy,gy,z-2,z+2,GRASS); // champ (l'herbe génère blé/fleurs)
-  for(let i=-2;i<=2;i++){ // clôture en rondins
+  fillB(x-2,x+2,gy,gy,z-2,z+2,FARMLAND); // parcelle labourée : le blé pousse dessus
+  setBlock(x,gy,z,WATER);                // rigole d'irrigation centrale (les épis poussent autour)
+  for(let i=-2;i<=2;i++){                // clôture en rondins avec portillon
     setBlock(x+i,gy+1,z-2,LOG);setBlock(x+i,gy+1,z+2,LOG);
     setBlock(x-2,gy+1,z+i,LOG);setBlock(x+2,gy+1,z+i,LOG);
   }
-  setBlock(x,gy+1,z+2,AIR);
+  setBlock(x,gy+1,z+2,AIR);              // portillon
+  // bottes de foin empilées (coin) + épouvantail
+  setBlock(x-1,gy+1,z-1,WOOL_YELLOW);setBlock(x-1,gy+2,z-1,WOOL_YELLOW);setBlock(x,gy+1,z-1,WOOL_YELLOW);
+  setBlock(x+1,gy+1,z+1,LOG);setBlock(x+1,gy+2,z+1,LOG);        // mât de l'épouvantail
+  setBlock(x+1,gy+3,z+1,WOOL_WHITE);                            // tête de toile
+  setBlock(x,gy+2,z+1,LOG);setBlock(x+2,gy+2,z+1,LOG);          // bras étendus
 }
 function stampBarrage(x,gy,z){
   // orientation : mur perpendiculaire au regard (comme le rempart) ; l'amont = vers le regard
