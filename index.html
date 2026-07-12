@@ -454,7 +454,10 @@ const SND={
 const AIR=0,GRASS=1,DIRT=2,STONE=3,SAND=4,LOG=5,LEAVES=6,PLANKS=7,GLASS=8,WATER=9,
       BEDROCK=10,SNOW=11,COBBLE=12,COAL_ORE=13,IRON_ORE=14,GOLD_ORE=15,DIAMOND_ORE=16,TORCH=17,
       ENERGY_ORE=18,WIRE=19,LEVER=20,LAMP=21,ETABLI=22,FOUR=23,
-      ICE=24,JUNGLE_LEAVES=25,CACTUS=26,MOSSY=27,FARMLAND=28;
+      ICE=24,JUNGLE_LEAVES=25,CACTUS=26,MOSSY=27,FARMLAND=28,
+      STONE_SLAB=29,PLANK_SLAB=30;
+// forme de rendu/collision non-cubique par bloc (défaut = cube plein)
+const SHAPE={[STONE_SLAB]:'slab',[PLANK_SLAB]:'slab'};
 // objets (non plaçables, ids ≥ 100)
 const ITEM_COAL=100,STICK=101,IRON_ING=102,GOLD_ING=103,DIAMOND_GEM=104,RAW_IRON=105,RAW_GOLD=106;
 const PICK_WOOD=110,PICK_STONE=111,PICK_IRON=112,PICK_DIAMOND=113;
@@ -470,6 +473,7 @@ const TILES={
   [ETABLI]:[25,24,8],[FOUR]:[26,27,27],
   [ICE]:[28,28,28],[JUNGLE_LEAVES]:[29,29,29],[CACTUS]:[30,30,30],[MOSSY]:[31,31,31],
   [FARMLAND]:[2,32,2],  // côtés = terre, dessus = terre labourée
+  [STONE_SLAB]:[3,3,3],[PLANK_SLAB]:[8,8,8], // dalles (rendues à mi-hauteur)
   [WATER]:[3,3,3],
 };
 const NAMES={
@@ -480,6 +484,7 @@ const NAMES={
   [ENERGY_ORE]:"Cristal d'énergie",[WIRE]:"Câble d'énergie",[LEVER]:'Levier',[LAMP]:'Lampe',
   [ETABLI]:'Établi',[FOUR]:'Four',
   [ICE]:'Glace',[JUNGLE_LEAVES]:'Feuillage tropical',[CACTUS]:'Cactus',[MOSSY]:'Pierre moussue',[FARMLAND]:'Terre labourée',
+  [STONE_SLAB]:'Dalle de pierre',[PLANK_SLAB]:'Dalle de planches',
   [ITEM_COAL]:'Charbon',[STICK]:'Bâton',[IRON_ING]:'Fer',[GOLD_ING]:'Or',[DIAMOND_GEM]:'Diamant',
   [RAW_IRON]:'Fer brut',[RAW_GOLD]:'Or brut',
   [PICK_WOOD]:'Pioche en bois',[PICK_STONE]:'Pioche en pierre',[PICK_IRON]:'Pioche en fer',[PICK_DIAMOND]:'Pioche en diamant',
@@ -490,6 +495,7 @@ const HARDNESS={
   [GOLD_ORE]:2.2,[DIAMOND_ORE]:2.6,[ENERGY_ORE]:2.2,[WIRE]:.05,[LEVER]:.2,[LAMP]:.5,
   [ETABLI]:.9,[FOUR]:1.6,
   [ICE]:.5,[JUNGLE_LEAVES]:.25,[CACTUS]:.4,[MOSSY]:1.6,[BEDROCK]:Infinity,[FARMLAND]:.5,
+  [STONE_SLAB]:1.6,[PLANK_SLAB]:.9,
 };
 // bloc cassé → ce qu'on ramasse (null = rien)
 const DROPS={
@@ -498,7 +504,7 @@ const DROPS={
 };
 const DROP_N={[COAL_ORE]:[1,2],[ENERGY_ORE]:[2,4]};
 const dropOf=b=>(b in DROPS)?DROPS[b]:b;
-const TRANSPARENT=new Set([AIR,WATER,GLASS,TORCH,LEAVES,JUNGLE_LEAVES,WIRE,LEVER,ICE]);
+const TRANSPARENT=new Set([AIR,WATER,GLASS,TORCH,LEAVES,JUNGLE_LEAVES,WIRE,LEVER,ICE,STONE_SLAB,PLANK_SLAB]);
 const isSolid=b=>b!==AIR&&b!==WATER&&b!==TORCH&&b!==WIRE&&b!==LEVER;
 const occludes=b=>isSolid(b)&&b!==GLASS; // pour l'occlusion ambiante
 // outils : 3 familles × 4 paliers, chaque famille est efficace sur sa classe de blocs
@@ -517,7 +523,7 @@ const WOODY=new Set([LOG,PLANKS,ETABLI,CACTUS]);
 const SOFT=new Set([DIRT,GRASS,SAND,SNOW]);
 const ORE_TIER={[COAL_ORE]:1,[IRON_ORE]:2,[GOLD_ORE]:3,[DIAMOND_ORE]:3,[ENERGY_ORE]:3};
 const CREATIVE_PALETTE=[GRASS,DIRT,STONE,COBBLE,SAND,LOG,PLANKS,LEAVES,GLASS,TORCH,SNOW,DIAMOND_ORE,WIRE,LEVER,LAMP,ETABLI,FOUR];
-const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,SAND,LOG,PLANKS,LEAVES,GLASS,TORCH,ETABLI,FOUR,SNOW,WIRE,LEVER,LAMP,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE];
+const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,STONE_SLAB,SAND,LOG,PLANKS,PLANK_SLAB,LEAVES,GLASS,TORCH,ETABLI,FOUR,SNOW,WIRE,LEVER,LAMP,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE];
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -1716,6 +1722,21 @@ function buildChunkMesh(cx,cz){
       flat.ind.push(base,base+1,base+2,base+2,base+1,base+3);
     }
   };
+  // boîte OPAQUE texturée (dalles/escaliers…) : tuiles [côté,dessus,dessous], UV latéraux non étirés (vBase/vScale)
+  const pushOpqBox=(x0,y0,z0,x1,y1,z1,tiles,skipBottom,vBase,vScale)=>{
+    const qs=boxQuads(x0,y0,z0,x1,y1,z1);
+    for(let f=0;f<6;f++){
+      if(f===2&&skipBottom)continue;
+      const ti=f===3?tiles[1]:f===2?tiles[2]:tiles[0], isSide=f!==2&&f!==3;
+      const q=qs[f],base=opq.pos.length/3,sh=FACE_SHADE[f];
+      for(let i=0;i<4;i++){
+        opq.pos.push(q[i][0],q[i][1],q[i][2]);
+        const[uu,vv]=tileUV(ti,uvq[i][0],isSide?vBase+uvq[i][1]*vScale:uvq[i][1]);
+        opq.uv.push(uu,vv);opq.col.push(sh,sh,sh);
+      }
+      opq.ind.push(base,base+1,base+2,base+2,base+1,base+3);
+    }
+  };
   const pushDecoCross=(wx,y,wz,ti,tint,h)=>{
     const ox=(hash2(wx,wz,883)-.5)*.3,oz=(hash2(wx,wz,884)-.5)*.3;
     const pairs=[
@@ -1766,6 +1787,10 @@ function buildChunkMesh(cx,cz){
       const off=on?.14:-.14;
       pushFlatBox(wx+.44,y+.12,wz+.44+off*.5,wx+.56,y+.42,wz+.56+off,
         on?.95:.62,on?.35:.45,on?.2:.3);
+      continue;
+    }
+    if(SHAPE[bt]==='slab'){ // dalle : demi-hauteur (v1 dalle basse)
+      pushOpqBox(wx,y,wz,wx+1,y+.5,wz+1,TILES[bt],occludes(gb(wx,y-1,wz)),0,.5);
       continue;
     }
     const tiles=TILES[bt];
@@ -2562,10 +2587,13 @@ function sweepAABB(pos,vel,hw,ph,dt){
     const z0=Math.floor(pos.z-hw),z1=Math.floor(pos.z+hw-EPS);
     let bound=null;
     for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){
-      if(!isSolid(getBlock(x,y,z)))continue;
+      const b=getBlock(x,y,z);
+      if(!isSolid(b))continue;
+      const slab=SHAPE[b]==='slab';
+      if(slab&&axis!==1)continue; // dalle : pas de blocage horizontal (on marche dessus / à travers le bas)
       const cell=[x,y,z][axis];
       if(d>0)bound=(bound===null)?cell:Math.min(bound,cell);
-      else bound=(bound===null)?cell+1:Math.max(bound,cell+1);
+      else{const top=(slab&&axis===1)?cell+.5:cell+1;bound=(bound===null)?top:Math.max(bound,top);}
     }
     if(bound!==null){
       if(axis===0){pos.x=d>0?bound-hw-EPS:bound+hw+EPS;hitWall=true;}
@@ -3378,6 +3406,8 @@ const RECIPES=[
   ]),
   {out:[LEVER,1],ins:[[STICK,1],[COBBLE,1]],station:'etabli'},
   {out:[LAMP,2],ins:[[WIRE,2],[GLASS,1]],station:'etabli'},
+  {out:[STONE_SLAB,6],ins:[[STONE,3]],station:'etabli'},   // dalles (façon Minecraft : 3 blocs → 6 dalles)
+  {out:[PLANK_SLAB,6],ins:[[PLANKS,3]],station:'etabli'},
   // fusion au four
   {out:[IRON_ING,2],ins:[[RAW_IRON,2],[ITEM_COAL,1]],station:'four'},
   {out:[GOLD_ING,2],ins:[[RAW_GOLD,2],[ITEM_COAL,1]],station:'four'},
