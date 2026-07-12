@@ -1264,14 +1264,24 @@ function generateChunkData(cx,cz){
         for(let x=ox-3;x<=ox+3;x++){setW(x,y,oz-2,PLANKS);setW(x,y,oz+3,PLANKS);}
         for(let z=oz-2;z<=oz+3;z++){setW(ox-3,y,z,PLANKS);setW(ox+3,y,z,PLANKS);}
       }
-      // poteaux d'angle en rondins
+      // poteaux d'angle en rondins (jusqu'au haut des murs)
       for(const[px2,pz2]of[[ox-3,oz-2],[ox+3,oz-2],[ox-3,oz+3],[ox+3,oz+3]])
-        for(let y=h+1;y<=h+5;y++)setW(px2,y,pz2,LOG);
+        for(let y=h+1;y<=h+4;y++)setW(px2,y,pz2,LOG);
       // fenêtres (hauteur du regard) + porte 2 m (côté sud)
       setW(ox-3,h+3,oz,GLASS);setW(ox+3,h+3,oz,GLASS);setW(ox,h+3,oz-2,GLASS);
       for(let y=h+1;y<=h+4;y++)setW(ox,y,oz+3,AIR);
-      // toit en rondins
-      for(let x=ox-3;x<=ox+3;x++)for(let z=oz-2;z<=oz+3;z++)setW(x,h+5,z,LOG);
+      // toit à deux pentes (pignon) : faîte le long de l'axe X, avant-toits en rondins
+      const rz0=oz-2,rz1=oz+3,ridge=h+5+Math.floor((rz1-rz0)/2);
+      for(let z=rz0;z<=rz1;z++){
+        const y=h+5+Math.min(z-rz0,rz1-z);
+        for(let x=ox-3;x<=ox+3;x++){
+          setW(x,y,z,LOG);                                     // pan de toit en rondins
+          for(let yy=h+5;yy<y;yy++)setW(x,yy,z,(x===ox-3||x===ox+3)?PLANKS:AIR); // pignons pleins
+        }
+      }
+      // cheminée en pierre qui traverse le toit (foyer ouvert en bas)
+      for(let y=h+1;y<=ridge+2;y++)setW(ox-2,y,oz+2,COBBLE);
+      setW(ox-2,h+1,oz+2,AIR);
       // aménagement : torche, établi, four
       setW(ox-2,h+1,oz-1,TORCH);
       setW(ox+2,h+1,oz-1,ETABLI);
@@ -3816,6 +3826,7 @@ window.__debug={
   findVillage:()=>{for(let r=1;r<40;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const v=villageAt(cx,cz);if(v)return{cx,cz,...v};}return null;},
   findLake:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const l=lakeAt(cx,cz);if(l)return{cx,cz,...l};}return null;},
   findStream:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const p=streamPath(cx,cz);if(p&&p.length>3)return{cx,cz,len:p.length,src:p[0],mid:p[(p.length/2)|0],end:p[p.length-1]};}return null;},
+  findChalet:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const c=chaletAt(cx,cz);if(c)return{cx,cz,...c};}return null;},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
