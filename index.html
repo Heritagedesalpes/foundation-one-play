@@ -1025,23 +1025,36 @@ function villageHouses(v){                         // 3-6 maisons en couronne au
   }
   return houses;
 }
-function stampHouse(setW,hx,hz,hy,withBench){      // petite maison 5×5 (murs planches, poteaux rondins, toit)
-  const w=2;
-  for(let x=hx-w;x<=hx+w;x++)for(let z=hz-w;z<=hz+w;z++){
-    setW(x,hy,z,PLANKS);
-    for(let y=hy+1;y<=hy+4;y++)setW(x,y,z,AIR);   // dégage l'intérieur (arbres/terrain)
+function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondation pierre, toit EN PENTE, cheminée, taille variée
+  const wx=2+(hash2(hx,hz,3301)<.45?1:0);          // demi-largeur 2-3 (axe X = faîte du toit)
+  const wz=2, wt=hy+3, ridge=wt+1+wz;              // haut des murs / hauteur du faîte
+  // dégage l'emprise (arbres/terrain) + fondation pierre
+  for(let x=hx-wx;x<=hx+wx;x++)for(let z=hz-wz;z<=hz+wz;z++){
+    for(let y=hy+1;y<=ridge+3;y++)setW(x,y,z,AIR);
+    setW(x,hy,z,COBBLE);
   }
-  for(let y=hy+1;y<=hy+3;y++){
-    for(let x=hx-w;x<=hx+w;x++){setW(x,y,hz-w,PLANKS);setW(x,y,hz+w,PLANKS);}
-    for(let z=hz-w;z<=hz+w;z++){setW(hx-w,y,z,PLANKS);setW(hx+w,y,z,PLANKS);}
+  // murs planches + poteaux d'angle en rondins
+  for(let y=hy+1;y<=wt;y++){
+    for(let x=hx-wx;x<=hx+wx;x++){setW(x,y,hz-wz,PLANKS);setW(x,y,hz+wz,PLANKS);}
+    for(let z=hz-wz;z<=hz+wz;z++){setW(hx-wx,y,z,PLANKS);setW(hx+wx,y,z,PLANKS);}
   }
-  for(const[px,pz]of[[hx-w,hz-w],[hx+w,hz-w],[hx-w,hz+w],[hx+w,hz+w]])
-    for(let y=hy+1;y<=hy+4;y++)setW(px,y,pz,LOG);
-  setW(hx,hy+1,hz+w,AIR);setW(hx,hy+2,hz+w,AIR);   // porte (sud)
-  setW(hx-w,hy+2,hz,GLASS);setW(hx+w,hy+2,hz,GLASS);setW(hx,hy+2,hz-w,GLASS); // fenêtres
-  for(let x=hx-w-1;x<=hx+w+1;x++)for(let z=hz-w-1;z<=hz+w+1;z++)setW(x,hy+4,z,LOG); // toit débordant
-  setW(hx-1,hy+1,hz-w+1,TORCH);                    // torche intérieure
-  if(withBench)setW(hx+1,hy+1,hz-w+1,ETABLI);      // une maison = atelier
+  for(const[px,pz]of[[hx-wx,hz-wz],[hx+wx,hz-wz],[hx-wx,hz+wz],[hx+wx,hz+wz]])
+    for(let y=hy+1;y<=wt;y++)setW(px,y,pz,LOG);
+  // porte (sud, 2 de haut) + fenêtres (verre)
+  setW(hx,hy+1,hz+wz,AIR);setW(hx,hy+2,hz+wz,AIR);
+  setW(hx,hy+2,hz-wz,GLASS);setW(hx-wx,hy+2,hz,GLASS);setW(hx+wx,hy+2,hz,GLASS);
+  // TOIT EN PENTE (faîte le long de X, rondins, débord) + pignons pleins
+  for(let L=0;L<=wz;L++){
+    const y=wt+1+L;
+    for(let x=hx-wx-1;x<=hx+wx+1;x++){ setW(x,y,hz-wz+L,LOG); setW(x,y,hz+wz-L,LOG); }
+    for(let z=hz-wz+L+1;z<=hz+wz-L-1;z++){ setW(hx-wx,y,z,PLANKS); setW(hx+wx,y,z,PLANKS); }
+  }
+  // cheminée en pierre (coin arrière) dépassant du toit + âtre ouvert
+  const cpx=hx-wx+1,cpz=hz-wz+1;
+  for(let y=hy+1;y<=ridge+2;y++)setW(cpx,y,cpz,COBBLE);
+  setW(cpx,hy+1,cpz,AIR);
+  setW(hx+wx-1,hy+1,hz-wz+1,TORCH);                // torche intérieure
+  if(withBench)setW(hx-wx+1,hy+1,hz+wz-1,ETABLI);  // une maison = atelier
 }
 /* ---- Cités perdues : ruines rares de pierre moussue (1 cellule de 128 sur ~6) ---- */
 function ruinAt(cellX,cellZ){
