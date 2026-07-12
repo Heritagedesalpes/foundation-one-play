@@ -544,7 +544,7 @@ function orientStair(id,yaw){
   const dir=Math.abs(fx)>=Math.abs(fz)?(fx>=0?'px':'nx'):(fz>=0?'pz':'nz');
   return STAIR_ORIENT[s.mat][dir];
 }
-const isSolid=b=>b!==AIR&&b!==WATER&&b!==TORCH&&b!==WIRE&&b!==LEVER;
+const isSolid=b=>b!==AIR&&b!==WATER&&b!==TORCH&&b!==WIRE&&b!==LEVER&&SHAPE[b]!=='cross';
 const occludes=b=>isSolid(b)&&b!==GLASS; // pour l'occlusion ambiante
 // outils : 3 familles × 4 paliers, chaque famille est efficace sur sa classe de blocs
 const toolKind=id=>(id>=210&&id<=213)?'pioche':(id>=214&&id<=217)?'hache':(id>=218&&id<=221)?'pelle':(id>=222&&id<=225)?'epee':null;
@@ -651,6 +651,54 @@ PLACE_ORDER.push(RED_SAND,RED_SANDSTONE,TERRACOTTA,TERRACOTTA_ORANGE,TERRACOTTA_
   TERRACOTTA_BROWN,GRAVEL,CLAY,SHINGLE,SAVANNA_GRASS,LATERITE,CHALK,ROCK_SALT,MUD,
   CORAL,CORAL_PINK,CORAL_BLUE,OBSIDIAN,TUFF);
 const TERRA_BANDS=[TERRACOTTA_ORANGE,TERRACOTTA,TERRACOTTA_YELLOW,TERRACOTTA_BROWN,TERRACOTTA_WHITE,TERRACOTTA];
+/* ====================== NATURE (agent B) : blocs 120-140 (SAVANNA_GRASS=110 vient de Géologie) ====================== */
+const BIRCH_LOG=120,BIRCH_LEAVES=121,ACACIA_LEAVES=122,WILLOW_LEAVES=123,
+      BAMBOO=124,MUSH_STEM=125,MUSH_CAP=126,
+      FLOWER_DAISY=128,FLOWER_GENTIAN=129,FLOWER_POPPY=130,FLOWER_CORNFLOWER=131,
+      FLOWER_SAVANE=132,TALL_GRASS=133,FERN=134,REEDS=135,DEAD_BUSH=136,
+      BERRY_BUSH=137,MUSHROOM_RED=138,MUSHROOM_BROWN=139,CACTUS_FLOWER=140;
+const TEINTURE_ROUGE=236,TEINTURE_JAUNE=237,TEINTURE_BLEUE=238,TEINTURE_BLEU_CLAIR=239,
+      TEINTURE_ORANGE=240,TEINTURE_ROSE=241,TEINTURE_VERTE=242,TEINTURE_NOIRE=243,
+      BAIES=244,CHAMPIGNON_ROUGE=245,CHAMPIGNON_BRUN=246,RAGOUT=247,ROSEAU=248;
+const CROSS_BLOCKS=[FLOWER_DAISY,FLOWER_GENTIAN,FLOWER_POPPY,FLOWER_CORNFLOWER,FLOWER_SAVANE,
+                    TALL_GRASS,FERN,REEDS,DEAD_BUSH,BERRY_BUSH,MUSHROOM_RED,MUSHROOM_BROWN,CACTUS_FLOWER];
+const CROSS_H={[FLOWER_DAISY]:.55,[FLOWER_GENTIAN]:.6,[FLOWER_POPPY]:.6,[FLOWER_CORNFLOWER]:.55,
+  [FLOWER_SAVANE]:.7,[TALL_GRASS]:.95,[FERN]:.65,[REEDS]:.98,[DEAD_BUSH]:.7,
+  [BERRY_BUSH]:.8,[MUSHROOM_RED]:.4,[MUSHROOM_BROWN]:.35,[CACTUS_FLOWER]:.45};
+TILES[BIRCH_LOG]=[56,6,6];TILES[BIRCH_LEAVES]=[57,57,57];TILES[ACACIA_LEAVES]=[58,58,58];
+TILES[WILLOW_LEAVES]=[59,59,59];TILES[BAMBOO]=[60,60,60];TILES[MUSH_STEM]=[61,61,61];
+TILES[MUSH_CAP]=[62,62,62];
+TILES[FLOWER_DAISY]=[22,22,22];TILES[FLOWER_GENTIAN]=[23,23,23];TILES[FLOWER_POPPY]=[63,63,63];
+TILES[FLOWER_CORNFLOWER]=[64,64,64];TILES[FLOWER_SAVANE]=[65,65,65];TILES[TALL_GRASS]=[66,66,66];
+TILES[FERN]=[67,67,67];TILES[REEDS]=[68,68,68];TILES[DEAD_BUSH]=[69,69,69];
+TILES[BERRY_BUSH]=[70,70,70];TILES[MUSHROOM_RED]=[71,71,71];TILES[MUSHROOM_BROWN]=[72,72,72];
+TILES[CACTUS_FLOWER]=[73,73,73];
+NAMES[BIRCH_LOG]='Bûche de bouleau';NAMES[BIRCH_LEAVES]='Feuillage de bouleau';
+NAMES[ACACIA_LEAVES]="Feuillage d'acacia";NAMES[WILLOW_LEAVES]='Feuillage de saule';
+NAMES[BAMBOO]='Bambou';NAMES[MUSH_STEM]='Pied de champignon';NAMES[MUSH_CAP]='Chapeau de champignon';
+NAMES[FLOWER_DAISY]='Marguerite';NAMES[FLOWER_GENTIAN]='Gentiane';
+NAMES[FLOWER_POPPY]='Coquelicot';NAMES[FLOWER_CORNFLOWER]='Bleuet';NAMES[FLOWER_SAVANE]='Fleur de savane';
+NAMES[TALL_GRASS]='Herbes hautes';NAMES[FERN]='Fougère';NAMES[REEDS]='Roseaux';NAMES[DEAD_BUSH]='Buisson mort';
+NAMES[BERRY_BUSH]='Buisson à baies';NAMES[MUSHROOM_RED]='Champignon rouge';NAMES[MUSHROOM_BROWN]='Champignon brun';
+NAMES[CACTUS_FLOWER]='Fleur de cactus';
+NAMES[TEINTURE_ROUGE]='Teinture rouge';NAMES[TEINTURE_JAUNE]='Teinture jaune';NAMES[TEINTURE_BLEUE]='Teinture bleue';
+NAMES[TEINTURE_BLEU_CLAIR]='Teinture bleu clair';NAMES[TEINTURE_ORANGE]='Teinture orange';
+NAMES[TEINTURE_ROSE]='Teinture rose';NAMES[TEINTURE_VERTE]='Teinture verte';NAMES[TEINTURE_NOIRE]='Teinture noire';
+NAMES[BAIES]='Baies';NAMES[CHAMPIGNON_ROUGE]='Champignon rouge';NAMES[CHAMPIGNON_BRUN]='Champignon brun';
+NAMES[RAGOUT]='Ragoût de champignons';NAMES[ROSEAU]='Roseau';
+HARDNESS[BIRCH_LOG]=.9;HARDNESS[BIRCH_LEAVES]=.25;HARDNESS[ACACIA_LEAVES]=.25;HARDNESS[WILLOW_LEAVES]=.25;
+HARDNESS[BAMBOO]=.35;HARDNESS[MUSH_STEM]=.5;HARDNESS[MUSH_CAP]=.5;
+for(const id of CROSS_BLOCKS)HARDNESS[id]=.12;
+DROPS[BIRCH_LEAVES]=null;DROPS[ACACIA_LEAVES]=null;DROPS[WILLOW_LEAVES]=null;
+DROPS[FLOWER_DAISY]=TEINTURE_JAUNE;DROPS[FLOWER_GENTIAN]=TEINTURE_BLEUE;DROPS[FLOWER_POPPY]=TEINTURE_ROUGE;
+DROPS[FLOWER_CORNFLOWER]=TEINTURE_BLEU_CLAIR;DROPS[FLOWER_SAVANE]=TEINTURE_ORANGE;DROPS[CACTUS_FLOWER]=TEINTURE_ROSE;
+DROPS[FERN]=TEINTURE_VERTE;DROPS[TALL_GRASS]=null;DROPS[DEAD_BUSH]=STICK;DROPS[REEDS]=ROSEAU;
+DROPS[BERRY_BUSH]=BAIES;DROPS[MUSHROOM_RED]=CHAMPIGNON_ROUGE;DROPS[MUSHROOM_BROWN]=CHAMPIGNON_BRUN;
+DROP_N[BERRY_BUSH]=[1,2];DROP_N[BAIES]=[1,2];
+for(const id of CROSS_BLOCKS){SHAPE[id]='cross';TRANSPARENT.add(id);}
+TRANSPARENT.add(BIRCH_LEAVES);TRANSPARENT.add(ACACIA_LEAVES);TRANSPARENT.add(WILLOW_LEAVES);
+WOODY.add(BIRCH_LOG);WOODY.add(BAMBOO);WOODY.add(MUSH_STEM);WOODY.add(CACTUS_FLOWER);
+const FOOD={[BAIES]:3,[CHAMPIGNON_BRUN]:2,[CHAMPIGNON_ROUGE]:2,[RAGOUT]:7};
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -1052,6 +1100,125 @@ drawTile(55,(x,y)=>{ // coquillage (croix déco, fond transparent)
   const rib=Math.abs(Math.sin(Math.atan2(y-cy,x-cx)*6))*14,sh=(y-cy)*1.5;
   return[236-sh+rib,214-sh+rib,196-sh+rib];
 });
+/* ---- Tuiles NATURE 56-75 ---- */
+drawTile(56,(x,y)=>{ // écorce de bouleau : claire + lenticelles noires
+  const n=jit(x,y,560)*8; let v=[212+n,208+n,194+n];
+  if((y%8<2)&&hash2(Math.floor(x/5),Math.floor(y/8),561)<.55)v=[46,44,46];
+  if(x%9===0)v=[168,164,150];
+  return v;
+});
+drawTile(57,(x,y)=>{ // feuilles de bouleau : vert clair ajouré
+  if(hash2(x,y,570)<.08)return[0,0,0,0];
+  const nn=fbm2(x*.4,y*.4,571,3),j=jit(x,y,572)*10;
+  const c=nn>.56?[150,196,86]:(nn<.4?[86,140,54]:[118,172,70]);
+  return[c[0]+j,c[1]+j,c[2]+j*.6];
+});
+drawTile(58,(x,y)=>{ // feuilles d'acacia : olive/khaki
+  if(hash2(x,y,580)<.06)return[0,0,0,0];
+  const nn=fbm2(x*.35,y*.35,581,3),j=jit(x,y,582)*9;
+  const c=nn>.55?[150,158,70]:(nn<.42?[96,108,44]:[124,136,56]);
+  return[c[0]+j,c[1]+j,c[2]+j*.5];
+});
+drawTile(59,(x,y)=>{ // feuilles de saule : vert pâle retombant
+  if(hash2(x,y,590)<.10)return[0,0,0,0];
+  const drip=Math.sin(x*.9+texN(x,y,591,.5)*3),nn=fbm2(x*.3,y*.5,592,3),j=jit(x,y,593)*8;
+  return[110+drip*8+j,168+nn*30+j,92+drip*6+j*.6];
+});
+drawTile(60,(x,y)=>{ // bambou : tige verte segmentée
+  const rib=Math.abs((x%14)-7),shade=rib<1?-30:(rib>5?16:0),node=(y%11<2)?-24:0,n=jit(x,y,600)*6;
+  return[96+shade+node+n,150+shade+node+n,58+shade*.6+node+n];
+});
+drawTile(61,(x,y)=>{ // pied de champignon : crème fibreux
+  const n=texN(x*2,y,610,.4)*14,fib=(x%6<1)?-16:0;
+  return[224+n+fib,214+n+fib,196+n+fib];
+});
+drawTile(62,(x,y)=>{ // chapeau de champignon : rouge à taches blanches
+  const n=jit(x,y,620)*10; let v=[176+n,42+n*.4,36+n*.3];
+  for(let i=0;i<7;i++){const cx=4+hash2(i,1,621)*24,cy=4+hash2(i,2,621)*24;if(Math.hypot(x-cx,y-cy)<3)v=[238,232,214];}
+  return v;
+});
+drawTile(63,(x,y)=>{ // coquelicot
+  if(y>16&&Math.abs(x-16+Math.sin(y*.4))<1)return[64,116,48];
+  const d=Math.hypot(x-16,y-10);
+  if(d<2)return[30,20,16]; if(d<6)return[206,40,36];
+  return[0,0,0,0];
+});
+drawTile(64,(x,y)=>{ // bleuet
+  if(y>16&&Math.abs(x-16)<1)return[70,120,52];
+  const d=Math.hypot(x-16,(y-11)*1.1);
+  if(d<2.4)return[64,90,190];
+  if(d<5.5&&(Math.floor(Math.atan2(y-11,x-16)*3)%2===0))return[92,132,230];
+  return[0,0,0,0];
+});
+drawTile(65,(x,y)=>{ // fleur de savane (lys orange)
+  if(y>15&&Math.abs(x-16+Math.sin(y*.3)*1.5)<1)return[92,120,44];
+  const d=Math.hypot(x-16,(y-11)*1.2);
+  if(d<1.4)return[240,180,40];
+  if(d<6&&(Math.abs(Math.atan2(y-11,x-16))*3)%2<1.3)return[236,132,40];
+  return[0,0,0,0];
+});
+drawTile(66,(x,y)=>{ // herbes hautes de savane (dorées)
+  for(let b=0;b<11;b++){
+    const bx=2+hash2(b,1,660)*28,tilt=(hash2(b,2,660)-.5)*.55,bh=16+hash2(b,3,660)*15;
+    const px2=bx+(31-y)*tilt;
+    if(y>31-bh&&Math.abs(x-px2)<1){const g=150+hash2(b,4,660)*70;return[g*.85,g*.72,52];}
+  }
+  return[0,0,0,0];
+});
+drawTile(67,(x,y)=>{ // fougère
+  const midx=16+Math.sin((31-y)*.12)*2;
+  if(Math.abs(x-midx)<1&&y>4)return[52,104,44];
+  const frond=Math.abs((y%6)-3),span=(31-y)*.5+2;
+  if(y>6&&frond<1.4&&Math.abs(x-midx)<span){const g=90+hash2(x,y,670)*40;return[g*.5,g,g*.4];}
+  return[0,0,0,0];
+});
+drawTile(68,(x,y)=>{ // roseaux / joncs
+  for(let b=0;b<6;b++){
+    const bx=4+b*4.6+(hash2(b,1,680)-.5)*1.5;
+    if(Math.abs(x-bx)<1.1){
+      if(y<7&&hash2(b,2,680)<.6)return[120,96,48];
+      const g=120+hash2(b,3,680)*40;return[g*.4,g,g*.45];
+    }
+  }
+  return[0,0,0,0];
+});
+drawTile(69,(x,y)=>{ // buisson mort
+  const cx=16;
+  for(let br=0;br<7;br++){
+    const a=(br/7)*3.14-1.57,len=8+hash2(br,1,690)*8;
+    for(let t=0;t<len;t++){
+      const px2=cx+Math.cos(a)*t*.6+(hash2(br,t,691)-.5)*2,py2=28-t*.9;
+      if(Math.abs(x-px2)<1&&Math.abs(y-py2)<1)return[120,92,52];
+    }
+  }
+  return[0,0,0,0];
+});
+drawTile(70,(x,y)=>{ // buisson à baies
+  const d=Math.hypot(x-16,y-19);
+  if(d<11){
+    if(hash2(x,y,701)<.10)return[186,36,44];
+    const nn=fbm2(x*.3,y*.3,700,3);return nn>.5?[70,120,48]:[48,92,38];
+  }
+  return[0,0,0,0];
+});
+drawTile(71,(x,y)=>{ // petit champignon rouge
+  if(y>18&&Math.abs(x-16)<2)return[224,214,196];
+  const d=Math.hypot(x-16,(y-14)*1.4);
+  if(y<=18&&d<8){if(hash2(x,y,710)<.12)return[240,232,214];return[196,44,38];}
+  return[0,0,0,0];
+});
+drawTile(72,(x,y)=>{ // petit champignon brun
+  if(y>18&&Math.abs(x-16)<1.6)return[214,204,184];
+  const d=Math.hypot(x-16,(y-15)*1.5);
+  if(y<=19&&d<7){const n=jit(x,y,720)*10;return[150+n,110+n,68+n];}
+  return[0,0,0,0];
+});
+drawTile(73,(x,y)=>{ // fleur de cactus (rose/jaune)
+  const d=Math.hypot(x-16,y-14);
+  if(d<3)return[244,214,60];
+  if(d<7&&(Math.abs(Math.atan2(y-14,x-16))*4)%2<1.3)return[232,96,150];
+  return[0,0,0,0];
+});
 
 // texture d'eau séparée (défilement animé)
 const waterCv=document.createElement('canvas');
@@ -1226,14 +1393,70 @@ function vegAt(wx,wz){
   const h=terrainHeight(wx,wz);
   const bi=biomeAt(wx,wz);
   const r=hash2(wx,wz,999);
-  if(bi===B_BEACH){ if(h>SEA&&r<.012)return['palmier',6+Math.floor(hash2(wx,wz,1237)*3)]; return 0; } // cocotiers épars sur le littoral
+  if(bi===B_BEACH){ if(h>SEA&&r<.012)return['palmier',6+Math.floor(hash2(wx,wz,1237)*3)]; return 0; }
   if(h<=SEA+1)return 0;
-  if(bi===B_JUNGLE){ if(r<.015)return['palmier',7+Math.floor(hash2(wx,wz,1237)*4)]; if(r<.09)return['jungle',15+Math.floor(hash2(wx,wz,1234)*10)]; } // jungle dense (mais pas un mur)
-  else if(bi===B_FOREST){ if(r<.035)return['chene',8+Math.floor(hash2(wx,wz,1234)*5)]; } // forêt modérée, marchable
-  else if(bi===B_PLAINS){ if(r<.003)return['chene',7+Math.floor(hash2(wx,wz,1234)*3)]; } // PLAINES OUVERTES (arbres épars)
+  // saule pleureur : au bord de l'eau (rives tempérées basses)
+  if((bi===B_PLAINS||bi===B_FOREST||bi===B_SAVANE)&&h<=SEA+3&&r<.05){
+    for(const[dx,dz]of[[2,0],[-2,0],[0,2],[0,-2]])
+      if(terrainHeight(wx+dx,wz+dz)<=SEA)return['saule',5+Math.floor(hash2(wx,wz,1234)*3)];
+  }
+  if(bi===B_JUNGLE){
+    if(r<.015)return['palmier',7+Math.floor(hash2(wx,wz,1237)*4)];
+    if(r<.05)return['jungle',15+Math.floor(hash2(wx,wz,1234)*10)];
+    if(r<.11)return['bambou',5+Math.floor(hash2(wx,wz,1240)*5)];              // bambouseraies
+    if(r<.125)return['champignon_geant',4+Math.floor(hash2(wx,wz,1241)*3)];
+  }
+  else if(bi===B_SAVANE){ if(r<.010)return['acacia',5+Math.floor(hash2(wx,wz,1234)*3)]; }
+  else if(bi===B_FOREST){
+    if(r<.024)return['chene',8+Math.floor(hash2(wx,wz,1234)*5)];
+    if(r<.035)return['bouleau',9+Math.floor(hash2(wx,wz,1238)*5)];
+  }
+  else if(bi===B_PLAINS){
+    if(r<.0022)return['chene',7+Math.floor(hash2(wx,wz,1234)*3)];
+    if(r<.003)return['bouleau',8+Math.floor(hash2(wx,wz,1238)*4)];
+  }
   else if(bi===B_MOUNT){ if(r<.02&&h<SNOWLINE-6)return['sapin',10+Math.floor(hash2(wx,wz,1234)*6)]; }
   else if(bi===B_TUNDRA){ if(r<.006)return['sapin',7+Math.floor(hash2(wx,wz,1234)*4)]; }
-  else if(bi===B_DESERT){ if(r<.012)return['cactus',2+Math.floor(hash2(wx,wz,1234)*3)]; }
+  else if(bi===B_DESERT){ if(r<.010)return['cactus',2+Math.floor(hash2(wx,wz,1234)*3)]; }
+  return 0;
+}
+// plantes au sol (blocs cross ramassables) → id de bloc ou 0. Déterministe, jamais sous l'eau (sauf roseaux en rive).
+function floraAt(wx,wz,bi,h,surf){
+  const r=hash2(wx,wz,4801);
+  if(bi===B_SAVANE){
+    if(r<.20)return TALL_GRASS;
+    if(r<.235)return FLOWER_SAVANE;
+    return 0;
+  }
+  if(surf===SAVANNA_GRASS){
+    if(r<.20)return TALL_GRASS;
+    if(r<.235)return FLOWER_SAVANE;
+    return 0;
+  }
+  if(surf===GRASS&&h>SEA){
+    if(r<.010)return FLOWER_POPPY;
+    if(r<.020)return FLOWER_CORNFLOWER;
+    if(r<.028)return FLOWER_DAISY;
+    if(r<.034)return FLOWER_GENTIAN;
+    if(bi===B_FOREST){
+      if(r<.10)return FERN;
+      if(r<.13)return MUSHROOM_RED;
+      if(r<.16)return MUSHROOM_BROWN;
+      if(r<.175)return BERRY_BUSH;
+    }
+    if(bi===B_JUNGLE){
+      if(r<.12)return FERN;
+      if(r<.15)return MUSHROOM_BROWN;
+    }
+    return 0;
+  }
+  if(surf===SAND){
+    if(bi===B_DESERT){ if(r<.020)return DEAD_BUSH; return 0; }
+    if(bi===B_BEACH&&r<.03){                                  // roseaux au bord de l'eau
+      if(terrainHeight(wx+1,wz)<=SEA||terrainHeight(wx-1,wz)<=SEA||
+         terrainHeight(wx,wz+1)<=SEA||terrainHeight(wx,wz-1)<=SEA)return REEDS;
+    }
+  }
   return 0;
 }
 /* ===== GÉOLOGIE : matériaux de colonne par biome ===== */
@@ -1416,6 +1639,16 @@ function lakeAt(cellX,cellZ){
   if(!isBasin||rim-h<2)return null;                 // besoin d'un rebord
   return{ox,oz,level:h+Math.min(3,rim-h-1),r:5+Math.floor(hash2(cellX,cellZ,6104)*4)};
 }
+// oasis : petit point d'eau au cœur du désert (1 cellule de 128 sur ~2)
+function oasisAt(cellX,cellZ){
+  if(hash2(cellX,cellZ,7701)>=.5)return null;
+  const ox=cellX*128+30+Math.floor(hash2(cellX,cellZ,7702)*68);
+  const oz=cellZ*128+30+Math.floor(hash2(cellX,cellZ,7703)*68);
+  if(biomeAt(ox,oz)!==B_DESERT)return null;
+  const h=terrainHeight(ox,oz);
+  if(h<=SEA+2||h>=SNOWLINE)return null;
+  return{ox,oz,h,r:3+Math.floor(hash2(cellX,cellZ,7704)*3)};
+}
 /* ---- Ruisseaux : sources d'altitude qui descendent la pente (base des futurs barrages) ---- */
 const _STREAM_MAX=52, _streamPaths=new Map();
 function springAt(cellX,cellZ){
@@ -1547,14 +1780,57 @@ function generateChunkData(cx,cz){
     const h=terrainHeight(wx,wz),topY=h+th;
     if(kind==='cactus'){
       for(let y=h+1;y<=topY;y++)setB(tx,y,tz,CACTUS);
+      if(hash2(wx,wz,4790)<.25)setIfAir(tx,topY+1,tz,CACTUS_FLOWER);   // cactus fleuri
       continue;
     }
-    for(let y=h+1;y<=topY;y++)setB(tx,y,tz,LOG);
+    if(kind==='bambou'){                                               // chaume vertical fin
+      for(let y=h+1;y<=topY;y++)setB(tx,y,tz,BAMBOO);
+      if(hash2(wx,wz,4791)<.5)setIfAir(tx,topY+1,tz,BAMBOO);
+      continue;
+    }
+    if(kind==='champignon_geant'){                                     // pied + chapeau en dôme
+      for(let y=h+1;y<=topY;y++)setB(tx,y,tz,MUSH_STEM);
+      const cyc=topY+1;
+      for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){
+        if(dx*dx+dz*dz>5)continue;
+        setIfAir(tx+dx,cyc,tz+dz,MUSH_CAP);
+        if(Math.abs(dx)<2&&Math.abs(dz)<2)setIfAir(tx+dx,cyc+1,tz+dz,MUSH_CAP);
+      }
+      continue;
+    }
+    const trunk=kind==='bouleau'?BIRCH_LOG:LOG;
+    for(let y=h+1;y<=topY;y++)setB(tx,y,tz,trunk);
     if(kind==='palmier'){ // palmier : tronc nu + couronne de frondes qui retombent
       setIfAir(tx,topY+1,tz,JUNGLE_LEAVES);
       for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
         setIfAir(tx+dx,topY,tz+dz,JUNGLE_LEAVES);
         setIfAir(tx+dx*2,topY-1,tz+dz*2,JUNGLE_LEAVES);
+      }
+      continue;
+    }
+    if(kind==='acacia'){                                               // houppier PLAT en parasol
+      const cy=topY+1;
+      for(let dx=-3;dx<=3;dx++)for(let dz=-3;dz<=3;dz++){
+        const d=dx*dx+dz*dz; if(d>10)continue;
+        setIfAir(tx+dx,cy,tz+dz,ACACIA_LEAVES);
+        if(d>4)setIfAir(tx+dx,cy-1,tz+dz,ACACIA_LEAVES);               // bord de la couronne
+        if(d<=1)setIfAir(tx+dx,cy+1,tz+dz,ACACIA_LEAVES);             // léger dôme central
+      }
+      continue;
+    }
+    if(kind==='saule'){                                                // saule pleureur + rideaux
+      const leaf=WILLOW_LEAVES,cy=topY-1,R=3;
+      for(let y=topY-3;y<=topY+1;y++){
+        const r=Math.max(1,Math.round(R-Math.abs(y-cy)*.7)),r2=r*r;
+        for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+          if(dx===0&&dz===0&&y<=topY)continue;
+          if(dx*dx+dz*dz>r2+1)continue;
+          setIfAir(tx+dx,y,tz+dz,leaf);
+        }
+      }
+      for(const[dx,dz]of[[R,0],[-R,0],[0,R],[0,-R],[2,2],[-2,2],[2,-2],[-2,-2]]){
+        const drop=2+Math.floor(hash2(wx+dx,wz+dz,4795)*3);
+        for(let y=cy;y>cy-drop;y--)setIfAir(tx+dx,y,tz+dz,leaf);
       }
       continue;
     }
@@ -1570,27 +1846,46 @@ function generateChunkData(cx,cz){
           setIfAir(tx+dx,y,tz+dz,LEAVES);
         }
       }
-    }else{ // chêne (houppier plein et arrondi) ou géant de jungle (large + feuillage tropical)
-      const jungle=kind==='jungle';
-      const leaf=jungle?JUNGLE_LEAVES:LEAVES;
-      const R=jungle?4:3;                    // rayon plus large
-      const cy=topY-1, bot=topY-4, top=topY+2; // houppier plus haut ET plus bas (tronc moins nu)
-      for(let y=bot;y<=top;y++){
-        const r=Math.max(1,Math.round(R-Math.abs(y-cy)*.72)); // enfle au centre, se resserre : forme sphérique
-        const r2=r*r;
+    }else if(kind==='bouleau'){                                        // houppier étroit et haut
+      const leaf=BIRCH_LEAVES,cy=topY-1;
+      for(let y=topY-3;y<=topY+2;y++){
+        const r=Math.max(1,Math.round(2.4-Math.abs(y-cy)*.55)),r2=r*r;
         for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
-          if(dx===0&&dz===0&&y<=topY)continue;              // laisse passer le tronc
-          const d=dx*dx+dz*dz;
-          if(d>r2+1)continue;                               // disque plein
-          if(d>=(r-.25)*(r-.25)&&hash2(wx+dx+y*31,wz+dz+y*17,4242)<.4)continue; // bord organique
+          if(dx===0&&dz===0&&y<=topY)continue;
+          const d=dx*dx+dz*dz; if(d>r2+1)continue;
+          if(d>=(r-.25)*(r-.25)&&hash2(wx+dx+y*31,wz+dz,4242)<.4)continue;
           setIfAir(tx+dx,y,tz+dz,leaf);
         }
       }
-      if(jungle){ // lianes qui pendent
+    }else{ // chêne (houppier plein arrondi) ou géant de jungle
+      const jungle=kind==='jungle';
+      const leaf=jungle?JUNGLE_LEAVES:LEAVES;
+      const R=jungle?4:3;
+      const cy=topY-1,bot=topY-4,top=topY+2;
+      for(let y=bot;y<=top;y++){
+        const r=Math.max(1,Math.round(R-Math.abs(y-cy)*.72)),r2=r*r;
+        for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+          if(dx===0&&dz===0&&y<=topY)continue;
+          const d=dx*dx+dz*dz; if(d>r2+1)continue;
+          if(d>=(r-.25)*(r-.25)&&hash2(wx+dx+y*31,wz+dz+y*17,4242)<.4)continue;
+          setIfAir(tx+dx,y,tz+dz,leaf);
+        }
+      }
+      if(jungle){
         for(let dx=-R;dx<=R;dx+=R*2)
           for(let y=bot;y>bot-3-Math.floor(hash2(wx,wz+dx,71)*4);y--)setIfAir(tx+dx,y,tz,JUNGLE_LEAVES);
       }
     }
+  }
+  // plantes au sol : fleurs, herbes, fougères, champignons, buissons, roseaux (cross ramassables)
+  for(let tx=0;tx<CHUNK;tx++)for(let tz=0;tz<CHUNK;tz++){
+    const wx=cx*CHUNK+tx,wz=cz*CHUNK+tz;
+    const h=terrainHeight(wx,wz);
+    const bi=biomeAt(wx,wz);
+    const surf=surfaceBlock(bi,h);
+    if(h<SEA)continue;
+    const fl=floraAt(wx,wz,bi,h,surf);
+    if(fl)setIfAir(tx,h+1,tz,fl);
   }
   // cités perdues en ruine (rares)
   stampRuins(cx,cz,b);
@@ -1661,18 +1956,64 @@ function generateChunkData(cx,cz){
       else if(hcol<=l.level+1)b[lidx(tx,hcol,tz)]=SNOW;   // rive enneigée
     }
   }
-  // ruisseaux : filets d'eau qui descendent des sources de montagne (lit rocheux)
+  // oasis : bassin d'eau + margelle de grès + palmiers + roseaux (désert)
+  {
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=10;
+    const cX0=Math.floor((wx0-M)/128),cX1=Math.floor((wx0+CHUNK-1+M)/128);
+    const cZ0=Math.floor((wz0-M)/128),cZ1=Math.floor((wz0+CHUNK-1+M)/128);
+    const setW=(wx,y,wz,t)=>{const lx=wx-wx0,lz=wz-wz0;if(lx<0||lx>=CHUNK||lz<0||lz>=CHUNK||y<1||y>=HEIGHT)return;b[lidx(lx,y,lz)]=t;};
+    for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
+      const o=oasisAt(ccx,ccz); if(!o)continue;
+      const{ox,oz,h,r}=o;
+      for(let dx=-r-2;dx<=r+2;dx++)for(let dz=-r-2;dz<=r+2;dz++){
+        const d=Math.hypot(dx,dz);
+        if(d<=r){                                        // bassin : creuse 2, remplit d'eau
+          setW(ox+dx,h,oz+dz,WATER);setW(ox+dx,h-1,oz+dz,WATER);setW(ox+dx,h-2,oz+dz,SAND);
+          for(let y=h+1;y<=h+2;y++)setW(ox+dx,y,oz+dz,AIR);
+          if(d>r-1.2&&hash2(ox+dx,oz+dz,7710)<.4)setW(ox+dx,h+1,oz+dz,REEDS);   // roseaux en rive
+        }else if(d<=r+1.5){                              // margelle de grès
+          setW(ox+dx,h,oz+dz,SANDSTONE);
+        }
+      }
+      for(const[dx,dz]of[[r+1,0],[-r-1,0],[0,r+1],[0,-r-1]]){
+        if(hash2(ox+dx,oz+dz,7711)>=.6)continue;
+        const px=ox+dx,pz=oz+dz,ph=terrainHeight(px,pz);
+        if(ph<=SEA)continue;
+        const th=6+Math.floor(hash2(px,pz,7712)*3),topY=ph+th;
+        for(let y=ph+1;y<=topY;y++)setW(px,y,pz,LOG);
+        setW(px,topY+1,pz,JUNGLE_LEAVES);
+        for(const[fx,fz]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+          setW(px+fx,topY,pz+fz,JUNGLE_LEAVES);setW(px+fx*2,topY-1,pz+fz*2,JUNGLE_LEAVES);
+        }
+      }
+    }
+  }
+  // ruisseaux → rivières (élargies en plaine) & cascades (nappe verticale sur les ressauts)
   {
     const wx0=cx*CHUNK,wz0=cz*CHUNK,MC=2;
     const cX0=Math.floor(wx0/112)-MC,cX1=Math.floor((wx0+CHUNK-1)/112)+MC;
     const cZ0=Math.floor(wz0/112)-MC,cZ1=Math.floor((wz0+CHUNK-1)/112)+MC;
+    const putW=(px,py,pz)=>{const tx=px-wx0,tz=pz-wz0;if(tx<0||tx>=CHUNK||tz<0||tz>=CHUNK||py<1||py>=HEIGHT)return;b[lidx(tx,py,tz)]=WATER;};
+    const putBed=(px,py,pz)=>{const tx=px-wx0,tz=pz-wz0;if(tx<0||tx>=CHUNK||tz<0||tz>=CHUNK||py<1||py>=HEIGHT)return;const i=lidx(tx,py,tz);if(b[i]===AIR)b[i]=STONE;};
     for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
       const path=streamPath(ccx,ccz); if(!path)continue;
-      for(const[px,pz,py]of path){
-        const tx=px-wx0,tz=pz-wz0;
-        if(tx<0||tx>=CHUNK||tz<0||tz>=CHUNK||py<=SEA)continue;
-        b[lidx(tx,py,tz)]=WATER;                     // filet d'eau à la surface
-        if(py-1>=0)b[lidx(tx,py-1,tz)]=STONE;        // lit rocheux
+      for(let k=0;k<path.length;k++){
+        const px=path[k][0],pz=path[k][1],py=path[k][2];
+        if(py<=SEA)continue;
+        putW(px,py,pz);putBed(px,py-1,pz);
+        if(py<SNOWLINE-40&&k<path.length-1){             // élargissement latéral en aval → rivière de plaine
+          const dxf=path[k+1][0]-px,dzf=path[k+1][1]-pz;
+          const sx=px+dzf,sz=pz-dxf;                     // perpendiculaire au flux
+          if((dzf||dxf)&&terrainHeight(sx,sz)<=py+1){putW(sx,py,sz);putBed(sx,py-1,sz);}
+        }
+        if(k<path.length-1){                             // cascade : ressaut vertical → colonne d'eau + vasque
+          const npx=path[k+1][0],npz=path[k+1][1],nyp=path[k+1][2];
+          if(py-nyp>=2){
+            for(let yy=nyp;yy<=py;yy++)putW(npx,yy,npz);  // nappe qui tombe
+            for(const[ddx,ddz]of[[1,0],[-1,0],[0,1],[0,-1]])
+              if(terrainHeight(npx+ddx,npz+ddz)<=nyp)putW(npx+ddx,nyp,npz+ddz);
+          }
+        }
       }
     }
   }
@@ -2085,6 +2426,10 @@ function buildChunkMesh(cx,cz){
         on?.95:.62,on?.35:.45,on?.2:.3);
       continue;
     }
+    if(SHAPE[bt]==='cross'){ // vraie plante ramassable : 2 quads croisés (comme la déco, mais bloc réel)
+      pushDecoCross(wx,y,wz,TILES[bt][0],1,CROSS_H[bt]||.9);
+      continue;
+    }
     if(SHAPE[bt]==='slab'){ // dalle : demi-hauteur (v1 dalle basse)
       pushOpqBox(wx,y,wz,wx+1,y+.5,wz+1,TILES[bt],occludes(gb(wx,y-1,wz)),0,.5);
       continue;
@@ -2120,16 +2465,19 @@ function buildChunkMesh(cx,cz){
       const F=FACES[f];
       const nb=gb(wx+F.dir[0],y+F.dir[1],wz+F.dir[2]);
       let show=TRANSPARENT.has(nb)&&nb!==bt;
-      if(bt===LEAVES&&nb===LEAVES)show=(F.dir[0]+F.dir[1]+F.dir[2])>0;
+      if(LEAFY.has(bt)&&nb===bt)show=(F.dir[0]+F.dir[1]+F.dir[2])>0;
       if(!show)continue;
       if(bt===WATER){
         const base=wtr.pos.length/3;
+        const vert=F.dir[1]===0;                         // face verticale = paroi de cascade / rive
         for(const corner of F.corners){
           let cy=corner.pos[1];
           if(surfWater&&cy===1)cy=.88;
           const px2=wx+corner.pos[0],pz2=wz+corner.pos[2];
           wtr.pos.push(px2,y+cy,pz2);
-          wtr.uv.push(px2*.11,pz2*.11);
+          if(!vert)               wtr.uv.push(px2*.11,pz2*.11);
+          else if(F.dir[0]!==0)   wtr.uv.push(pz2*.11,(y+cy)*.11);   // paroi orientée X → largeur = Z ; V = hauteur (défile vers le bas)
+          else                    wtr.uv.push(px2*.11,(y+cy)*.11);   // paroi orientée Z → largeur = X
         }
         wtr.ind.push(base,base+1,base+2,base+2,base+1,base+3);
         continue;
@@ -3634,10 +3982,10 @@ function updateMining(dt){
 }
 // Feuillage à la Minecraft : couper le tronc (retirer TOUT le bois) fait « mourir » en cascade
 // les feuilles qui ne sont plus à portée (rayon 4) d'un LOG → l'arbre disparaît.
-const LEAFY=new Set([LEAVES,JUNGLE_LEAVES]);
+const LEAFY=new Set([LEAVES,JUNGLE_LEAVES,BIRCH_LEAVES,ACACIA_LEAVES,WILLOW_LEAVES]);
 function logNear(x,y,z,r){
   for(let dx=-r;dx<=r;dx++)for(let dy=-r;dy<=r;dy++)for(let dz=-r;dz<=r;dz++)
-    if(getBlock(x+dx,y+dy,z+dz)===LOG)return true;
+    {const g=getBlock(x+dx,y+dy,z+dz);if(g===LOG||g===BIRCH_LOG)return true;}
   return false;
 }
 function decayLeavesAround(bx,by,bz){
@@ -3661,7 +4009,7 @@ function breakBlock(x,y,z,bt){
   SND.break(bt);
   player.stats.mined++;
   beat('firstmine','Sous la surface','La pierre recèle le métal des âges à venir. Creuse, et le monde s’ouvre.',4600);
-  if(bt===LOG){player.stats.wood++;decayLeavesAround(x,y,z);} // couper le tronc → les feuilles non soutenues tombent
+  if(bt===LOG||bt===BIRCH_LOG){player.stats.wood++;decayLeavesAround(x,y,z);} // couper le tronc → les feuilles non soutenues tombent
   if(settings.tuto&&STONY.has(bt))tutoEvent('mine',bt);
   if((player.stats.mined&7)===0)checkObjectives();
   if(survival()){
@@ -3698,6 +4046,14 @@ function updatePlacing(dt){
   }
   if(!r.prev)return;
   const id=selectedId();
+  if(FOOD[id]!==undefined){                          // nourriture : soigne et se consomme
+    if(survival()){
+      if(player.hp>=20){placeFail('Points de vie déjà au maximum');return;}
+      if(!invTake(id)){placeFail('Plus de '+(NAMES[id]||'nourriture'));return;}
+      player.hp=Math.min(20,player.hp+FOOD[id]);updateHearts();updateHotbar();
+    }
+    SND.pop();placeTimer=.45;return;
+  }
   if(id===undefined){placeFail('Rien à poser — sélectionne un bloc dans la barre');return;}
   if(id>=200){placeFail('Cet objet ne se pose pas');return;} // objets et outils non plaçables (frontière 200)
   const[x,y,z]=r.prev;
@@ -3757,6 +4113,19 @@ const RECIPES=[
   {out:[GLASS,4],ins:[[RED_SAND,4],[ITEM_COAL,1]],station:'four'}, // verre depuis sable rouge
 ];
 RECIPES.push(...GEN_RECIPES); // recettes des dalles/escaliers générés (pavé, grès, briques, briques de pierre)
+// NATURE : teinture + laine blanche → laine colorée (remplace la coloration « gratuite » pour ces 8 teintes)
+[[TEINTURE_ROUGE,14],[TEINTURE_JAUNE,4],[TEINTURE_BLEUE,11],[TEINTURE_BLEU_CLAIR,3],
+ [TEINTURE_ORANGE,1],[TEINTURE_ROSE,6],[TEINTURE_VERTE,13],[TEINTURE_NOIRE,15],
+].forEach(([dye,wi])=>{
+  const wool=WOOL_IDS[wi];
+  const j=RECIPES.findIndex(r=>r.out[0]===wool&&r.ins.length===1&&r.ins[0][0]===WOOL_IDS[0]);
+  if(j>=0)RECIPES.splice(j,1);
+  RECIPES.push({out:[wool,1],ins:[[WOOL_IDS[0],1],[dye,1]],station:'etabli'});
+});
+RECIPES.push({out:[TEINTURE_NOIRE,2],ins:[[ITEM_COAL,1]],station:'etabli'});   // noir depuis charbon
+RECIPES.push({out:[RAGOUT,1],ins:[[CHAMPIGNON_ROUGE,1],[CHAMPIGNON_BRUN,1]],station:'four'}); // ragoût = soin
+RECIPES.push({out:[WOOL_IDS[10],1],ins:[[WOOL_IDS[0],1],[TEINTURE_ROUGE,1],[TEINTURE_BLEUE,1]],station:'etabli'}); // violette
+RECIPES.push({out:[WOOL_IDS[9],1], ins:[[WOOL_IDS[0],1],[TEINTURE_VERTE,1],[TEINTURE_BLEUE,1]],station:'etabli'}); // cyan
 const insOK=r=>r.ins.every(([id,n])=>(player.inv[id]||0)>=n);
 function stationOK(r){
   if(!r.station||!survival())return true;
@@ -4322,6 +4691,17 @@ function iconCanvas(id){
   else if(id===SILEX){ rect(11,14,10,8,'#4a4640');rect(13,12,6,3,'#5c584f');rect(12,20,5,3,'#2f2c28');rect(18,16,3,3,'rgba(255,255,255,.4)'); }
   else if(id===SEL){ rect(12,13,9,9,'#f2eef0');rect(10,16,4,4,'#e8e0e4');rect(19,18,4,4,'#e8e0e4');rect(14,15,3,3,'rgba(255,255,255,.7)'); }
   else if(id===ARGILE){ rect(11,14,10,9,'#9aa2ab');rect(13,12,7,3,'#aab0b8');rect(13,20,6,3,'#828a94'); }
+  else if(id>=TEINTURE_ROUGE&&id<=TEINTURE_NOIRE){ // fioles de teinture
+    const COL={[TEINTURE_ROUGE]:'#ce2824',[TEINTURE_JAUNE]:'#e6c020',[TEINTURE_BLEUE]:'#2438b8',
+      [TEINTURE_BLEU_CLAIR]:'#4f82e6',[TEINTURE_ORANGE]:'#e6842c',[TEINTURE_ROSE]:'#e660a0',
+      [TEINTURE_VERTE]:'#3a9a34',[TEINTURE_NOIRE]:'#222024'}[id];
+    rect(12,6,8,4,'#b8c0c4');rect(10,10,12,16,'#cfe0e6');rect(11,12,10,13,COL);rect(13,14,3,5,'rgba(255,255,255,.5)');
+  }
+  else if(id===BAIES){ for(let i=0;i<5;i++){const bx=8+hash2(i,1,244)*16,by=12+hash2(i,2,244)*10;rect(bx,by,5,5,'#c02838');rect(bx+1,by+1,2,2,'#e05666');} }
+  else if(id===CHAMPIGNON_ROUGE){ rect(13,18,6,8,'#e4d6c0');rect(8,10,16,9,'#c42c26');rect(11,12,3,3,'#f0e6d2');rect(18,13,3,3,'#f0e6d2'); }
+  else if(id===CHAMPIGNON_BRUN){ rect(13,18,6,8,'#d8ccb4');rect(9,11,14,8,'#96683c'); }
+  else if(id===RAGOUT){ rect(7,16,18,10,'#7a5a3a');rect(9,13,14,4,'#b8863c');rect(11,10,3,3,'#c42c26');rect(16,11,3,3,'#96683c'); }
+  else if(id===ROSEAU){ for(let i=0;i<3;i++)rect(11+i*4,6,2,20,'#4a8a3c'); rect(10,4,4,4,'#8a6a3c'); }
   else if(toolKind(id)){
     const c2=TIER_COLOR[toolTierOf(id)],k=toolKind(id);
     if(k==='epee'){ // épée : garde + lame diagonale
@@ -4624,6 +5004,10 @@ window.__debug={
   geoGive:()=>{[RED_SAND,RED_SANDSTONE,TERRACOTTA,TERRACOTTA_ORANGE,TERRACOTTA_YELLOW,TERRACOTTA_WHITE,
     TERRACOTTA_BROWN,GRAVEL,CLAY,SHINGLE,SAVANNA_GRASS,LATERITE,CHALK,ROCK_SALT,MUD,CORAL,CORAL_PINK,
     CORAL_BLUE,OBSIDIAN,TUFF].forEach(b=>invAdd(b,8)); updateHotbar(); return 'blocs géo donnés'; },
+  findOasis:()=>{for(let r=1;r<80;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const o=oasisAt(cx,cz);if(o)return{cx,cz,...o};}return null;},
+  giveDyes:()=>{[TEINTURE_ROUGE,TEINTURE_JAUNE,TEINTURE_BLEUE,TEINTURE_BLEU_CLAIR,TEINTURE_ORANGE,TEINTURE_ROSE,TEINTURE_VERTE,TEINTURE_NOIRE].forEach(d=>invAdd(d,8));invAdd(WOOL_IDS[0],16);updateHotbar();return 'teintures + laine blanche';},
+  plantHere:()=>{const p=player.pos,x=Math.round(p.x),z=Math.round(p.z),h=terrainHeight(x,z);[FLOWER_POPPY,FLOWER_CORNFLOWER,FLOWER_SAVANE,TALL_GRASS,FERN,REEDS,BERRY_BUSH,MUSHROOM_RED,MUSHROOM_BROWN].forEach((b,i)=>setBlock(x+i-4,h+1,z,b));return 'plantes posées';},
+  waterfallHere:()=>{const p=player.pos,x=Math.round(p.x),z=Math.round(p.z),y=Math.floor(p.y);for(let i=0;i<8;i++)setBlock(x,y-i,z+2,WATER);return 'cascade test';},
   biomeScan:()=>{ // distribution des biomes + altitude max sur une large zone
     const counts={},N=BIOME_NAMES.length; let maxH=0,minH=999;
     for(let x=-800;x<=800;x+=40)for(let z=-800;z<=800;z+=40){
@@ -4767,6 +5151,11 @@ function frame(now){
   }
   if(decoShader)decoShader.uniforms.uTime.value=t;
   if(waterShader)waterShader.uniforms.uTime.value=t;
+  // écoulement : le motif d'eau défile (V vers le bas = chute, U = dérive de surface) — coût ~nul
+  if(waterTex){
+    waterTex.offset.y=(waterTex.offset.y-dt*0.22)%1;
+    waterTex.offset.x=(waterTex.offset.x+dt*0.015)%1;
+  }
   updateChunks(state.cinematic?sp.x:player.pos.x,state.cinematic?sp.z:player.pos.z);
   updateSky(dt,state.cinematic?new V3(sp.x,sp.y,sp.z):player.pos);
   updateTorchLights(player.pos.x,player.pos.y,player.pos.z,t);
