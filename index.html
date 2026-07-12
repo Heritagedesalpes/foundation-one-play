@@ -363,8 +363,16 @@
   <button class="btn primary" id="btn-respawn">Réapparaître</button>
 </div>
 
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
+// post-traitement (bloom cinématique) — addons Three.js depuis jsdelivr
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/OutputPass.js';
 
 /* ============================== Utilitaires ============================== */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -1510,6 +1518,14 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.12;
 document.body.appendChild(renderer.domElement);
+
+// ---- Post-traitement : bloom cinématique (le tone mapping est appliqué par OutputPass) ----
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloomPass=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.34,.5,.86); // force, rayon, seuil (seul le très lumineux brille)
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+const renderScene=()=>{ if(settings.bloom!==false)composer.render(); else renderer.render(scene,camera); };
 
 const atlasTex=new THREE.CanvasTexture(atlas);
 atlasTex.colorSpace=THREE.SRGBColorSpace;
@@ -3337,6 +3353,7 @@ addEventListener('resize',()=>{
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  composer.setSize(innerWidth,innerHeight);
 });
 
 // ---- Manette (Gamepad API, mapping standard)
@@ -4182,7 +4199,7 @@ function frame(now){
       `biome : ${BIOME_NAMES[biomeAt(Math.floor(player.pos.x),Math.floor(player.pos.z))]}\n`+
       `jour ${(dayFrac*24).toFixed(1)} h${player.fly?' · VOL':''}${survival()?' · SURVIE':''}`;
   }
-  renderer.render(scene,camera);
+  renderScene();
 }
 initHotbar();
 updateHotbar();
