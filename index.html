@@ -1516,7 +1516,7 @@ renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.12;
+renderer.toneMappingExposure=1.16;
 document.body.appendChild(renderer.domElement);
 
 // ---- Post-traitement : bloom cinématique (le tone mapping est appliqué par OutputPass) ----
@@ -1760,8 +1760,9 @@ function buildChunkMesh(cx,cz){
     // végétation décorative sur l'herbe exposée
     if(bt===GRASS&&gb(wx,y+1,wz)===AIR){
       const rr=hash2(wx,wz,301);
-      if(rr<.13)pushDecoCross(wx,y+1,wz,21,.75+hash2(wx,wz,302)*.45,.5);
-      else if(rr<.165)pushDecoCross(wx,y+1,wz,hash2(wx,wz,303)<.5?22:23,1,.62);
+      // herbe DENSE et de hauteur variée (aspect prairie luxuriante) + fleurs plus nombreuses
+      if(rr<.36)pushDecoCross(wx,y+1,wz,21,.72+hash2(wx,wz,302)*.5,.45+hash2(wx,wz,304)*.55);
+      else if(rr<.41)pushDecoCross(wx,y+1,wz,hash2(wx,wz,303)<.5?22:23,1,.6+hash2(wx,wz,305)*.25);
     }
     // blé sur la terre labourée des champs (épis dorés qui ondulent)
     if(bt===FARMLAND&&gb(wx,y+1,wz)===AIR&&hash2(wx,wz,305)<.88)
@@ -3967,7 +3968,7 @@ function updateSky(dt,pp){
     sun.position.copy(pp).addScaledVector(sunDir,280);
   }
   sun.target.position.copy(pp);
-  hemi.intensity=.22+day*.75;
+  hemi.intensity=.28+day*.85; // remplissage ciel plus généreux de jour : ombres douces, prairie lumineuse
   // sprites
   sunSprite.position.copy(camera.position).addScaledVector(sunDir,430);
   moonSprite.position.copy(camera.position).addScaledVector(sunDir,-430);
