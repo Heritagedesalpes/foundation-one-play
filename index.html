@@ -442,7 +442,7 @@ const SND={
 const AIR=0,GRASS=1,DIRT=2,STONE=3,SAND=4,LOG=5,LEAVES=6,PLANKS=7,GLASS=8,WATER=9,
       BEDROCK=10,SNOW=11,COBBLE=12,COAL_ORE=13,IRON_ORE=14,GOLD_ORE=15,DIAMOND_ORE=16,TORCH=17,
       ENERGY_ORE=18,WIRE=19,LEVER=20,LAMP=21,ETABLI=22,FOUR=23,
-      ICE=24,JUNGLE_LEAVES=25,CACTUS=26,MOSSY=27;
+      ICE=24,JUNGLE_LEAVES=25,CACTUS=26,MOSSY=27,FARMLAND=28;
 // objets (non plaçables, ids ≥ 100)
 const ITEM_COAL=100,STICK=101,IRON_ING=102,GOLD_ING=103,DIAMOND_GEM=104,RAW_IRON=105,RAW_GOLD=106;
 const PICK_WOOD=110,PICK_STONE=111,PICK_IRON=112,PICK_DIAMOND=113;
@@ -457,6 +457,7 @@ const TILES={
   [DIAMOND_ORE]:[16,16,16],[TORCH]:[17,17,17],[ENERGY_ORE]:[18,18,18],[LAMP]:[19,19,19],
   [ETABLI]:[25,24,8],[FOUR]:[26,27,27],
   [ICE]:[28,28,28],[JUNGLE_LEAVES]:[29,29,29],[CACTUS]:[30,30,30],[MOSSY]:[31,31,31],
+  [FARMLAND]:[2,32,2],  // côtés = terre, dessus = terre labourée
   [WATER]:[3,3,3],
 };
 const NAMES={
@@ -466,7 +467,7 @@ const NAMES={
   [TORCH]:'Torche',[BEDROCK]:'Roche-mère',[WATER]:'Eau',
   [ENERGY_ORE]:"Cristal d'énergie",[WIRE]:"Câble d'énergie",[LEVER]:'Levier',[LAMP]:'Lampe',
   [ETABLI]:'Établi',[FOUR]:'Four',
-  [ICE]:'Glace',[JUNGLE_LEAVES]:'Feuillage tropical',[CACTUS]:'Cactus',[MOSSY]:'Pierre moussue',
+  [ICE]:'Glace',[JUNGLE_LEAVES]:'Feuillage tropical',[CACTUS]:'Cactus',[MOSSY]:'Pierre moussue',[FARMLAND]:'Terre labourée',
   [ITEM_COAL]:'Charbon',[STICK]:'Bâton',[IRON_ING]:'Fer',[GOLD_ING]:'Or',[DIAMOND_GEM]:'Diamant',
   [RAW_IRON]:'Fer brut',[RAW_GOLD]:'Or brut',
   [PICK_WOOD]:'Pioche en bois',[PICK_STONE]:'Pioche en pierre',[PICK_IRON]:'Pioche en fer',[PICK_DIAMOND]:'Pioche en diamant',
@@ -476,11 +477,11 @@ const HARDNESS={
   [STONE]:1.6,[COBBLE]:1.6,[GLASS]:.35,[TORCH]:.05,[COAL_ORE]:1.9,[IRON_ORE]:2.2,
   [GOLD_ORE]:2.2,[DIAMOND_ORE]:2.6,[ENERGY_ORE]:2.2,[WIRE]:.05,[LEVER]:.2,[LAMP]:.5,
   [ETABLI]:.9,[FOUR]:1.6,
-  [ICE]:.5,[JUNGLE_LEAVES]:.25,[CACTUS]:.4,[MOSSY]:1.6,[BEDROCK]:Infinity,
+  [ICE]:.5,[JUNGLE_LEAVES]:.25,[CACTUS]:.4,[MOSSY]:1.6,[BEDROCK]:Infinity,[FARMLAND]:.5,
 };
 // bloc cassé → ce qu'on ramasse (null = rien)
 const DROPS={
-  [GRASS]:DIRT,[STONE]:COBBLE,[LEAVES]:null,[JUNGLE_LEAVES]:null,[MOSSY]:COBBLE,[ICE]:null,[COAL_ORE]:ITEM_COAL,
+  [GRASS]:DIRT,[STONE]:COBBLE,[LEAVES]:null,[JUNGLE_LEAVES]:null,[MOSSY]:COBBLE,[ICE]:null,[FARMLAND]:DIRT,[COAL_ORE]:ITEM_COAL,
   [IRON_ORE]:RAW_IRON,[GOLD_ORE]:RAW_GOLD,[DIAMOND_ORE]:DIAMOND_GEM,[ENERGY_ORE]:WIRE,
 };
 const DROP_N={[COAL_ORE]:[1,2],[ENERGY_ORE]:[2,4]};
@@ -542,7 +543,7 @@ function fbm3(x,y,z,s){
 }
 
 /* ============================== Atlas de textures 32px (original) ============================== */
-const ATLAS_W=8,ATLAS_H=4,TS=32;
+const ATLAS_W=8,ATLAS_H=5,TS=32;
 const atlas=document.createElement('canvas');
 atlas.width=ATLAS_W*TS;atlas.height=ATLAS_H*TS;
 const actx=atlas.getContext('2d');
@@ -779,6 +780,25 @@ drawTile(31,(x,y)=>{ // pierre moussue : pavé + plaques de mousse
   let[r,g,b]=[v,v,v+2];
   if(fbm2(x*.2,y*.2,152,3)>.54){r=48+jit(x,y,153)*10;g=92+jit(x,y,153)*14;b=42;} // mousse
   return[r,g,b];
+});
+drawTile(32,(x,y)=>{ // terre labourée : sillons horizontaux réguliers
+  const n=texN(x,y,44,.3)*22;
+  const furrow=(y%6<2)?-26:0;                    // sillons sombres
+  const seed=hash2(x,y,45)<.045?22:0;            // grains clairs semés
+  return[104+n+furrow+seed,74+n*.8+furrow+seed,46+n*.6+furrow];
+});
+drawTile(33,(x,y)=>{ // blé : tiges + épis dorés (croix décorative)
+  for(let b=0;b<7;b++){
+    const bx=4+b*3.7+(hash2(b,1,71)-.5)*1.4;
+    const tilt=(hash2(b,2,71)-.5)*.22;
+    const px2=bx+(31-y)*tilt;
+    const head=y<13;                             // tête = épi doré, bas = tige
+    if(Math.abs(x-px2)<(head?1.7:1)){
+      if(head){const g=205+hash2(b+y,3,71)*40;return[g,g*.80,42];}
+      const s=150+hash2(b,4,71)*36;return[s*.92,s*.82,58];
+    }
+  }
+  return[0,0,0,0];
 });
 
 // texture d'eau séparée (défilement animé)
@@ -1024,6 +1044,16 @@ function villageHouses(v){                         // 3-6 maisons en couronne au
     if(ok)houses.push({hx,hz,hy,i});
   }
   return houses;
+}
+function villageFields(v){                          // 1-2 parcelles de blé plates en périphérie
+  const out=[];
+  for(const[ang,rx,rz]of[[0,3,4],[Math.PI,4,3]]){
+    const fx=v.ox+Math.round(Math.cos(ang)*20),fz=v.oz+Math.round(Math.sin(ang)*20);
+    const fh=terrainHeight(fx,fz);
+    if(fh<=SEA+1||Math.abs(fh-v.h)>2)continue;      // sur terrain plat proche du niveau du village
+    out.push({fx,fz,rx,rz,fh});
+  }
+  return out;
 }
 function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondation pierre, toit EN PENTE, cheminée, taille variée
   const wx=2+(hash2(hx,hz,3301)<.45?1:0);          // demi-largeur 2-3 (axe X = faîte du toit)
@@ -1322,7 +1352,7 @@ function generateChunkData(cx,cz){
   }
   // villages : hameaux de plusieurs maisons (Plaines/Forêt), reliées par des sentiers
   {
-    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=22;
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=28;   // marge élargie : couvre les champs en périphérie
     const cX0=Math.floor((wx0-M)/160),cX1=Math.floor((wx0+CHUNK-1+M)/160);
     const cZ0=Math.floor((wz0-M)/160),cZ1=Math.floor((wz0+CHUNK-1+M)/160);
     for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
@@ -1338,6 +1368,13 @@ function generateChunkData(cx,cz){
         }
         stampHouse(setW,ho.hx,ho.hz,ho.hy,hi===0); // 1re maison = atelier (établi)
       });
+      for(const fld of villageFields(v)){           // champs de blé cultivés (terre labourée plate)
+        for(let dx=-fld.rx;dx<=fld.rx;dx++)for(let dz=-fld.rz;dz<=fld.rz;dz++){
+          const px=fld.fx+dx,pz=fld.fz+dz,ph=terrainHeight(px,pz);
+          if(Math.abs(ph-fld.fh)>1)continue;        // reste plat, pas de blé en pente
+          setW(px,ph,pz,FARMLAND);
+        }
+      }
     }
   }
   const x0=cx*CHUNK,z0=cz*CHUNK;
@@ -1708,6 +1745,9 @@ function buildChunkMesh(cx,cz){
       if(rr<.13)pushDecoCross(wx,y+1,wz,21,.75+hash2(wx,wz,302)*.45,.5);
       else if(rr<.165)pushDecoCross(wx,y+1,wz,hash2(wx,wz,303)<.5?22:23,1,.62);
     }
+    // blé sur la terre labourée des champs (épis dorés qui ondulent)
+    if(bt===FARMLAND&&gb(wx,y+1,wz)===AIR&&hash2(wx,wz,305)<.88)
+      pushDecoCross(wx,y+1,wz,33,1,.72+hash2(wx,wz,306)*.3);
     for(let f=0;f<6;f++){
       const F=FACES[f];
       const nb=gb(wx+F.dir[0],y+F.dir[1],wz+F.dir[2]);
