@@ -2499,6 +2499,9 @@ const AGES=[
   {nom:'Village',   mult:1.5, req:{builds:{maison:2},res:{bois:120}}, cine:'Les premiers foyers se rassemblent. Un village prend racine dans la vallée.'},
   {nom:'Cité',      mult:2.2, req:{builds:{caserne:1},res:{pierre:150},ecus:200}, cine:'Les murs s’élèvent, les rues s’ordonnent. Ta cité impose sa présence.'},
   {nom:'Royaume',   mult:3.2, req:{builds:{tour:2},res:{pierre:300},ecus:500}, cine:'Ton nom porte au-delà des collines. Voici venu le temps du royaume.'},
+  {nom:'Ère Industrielle', mult:4.5, req:{builds:{mine:2,scierie:1},res:{fer:20,pierre:400},ecus:900}, cine:'Les roues tournent, la vapeur monte. Ta vallée entre dans l’ère des machines — les barrages peuvent désormais s’élever.'},
+  {nom:'Ère Moderne',      mult:6.5, req:{builds:{barrage:1},res:{fer:40,pierre:500},ecus:1800}, cine:'Le barrage gronde, l’électricité jaillit. Câbles et lumières irriguent chaque foyer de la vallée.'},
+  {nom:'Ère Néo-Futuriste',mult:9,   req:{builds:{barrage:2},res:{fer:90},ecus:3500}, cine:'Verre, énergie et lumière : ta civilisation franchit le seuil de l’avenir.'},
 ];
 // métiers recrutables : coût + ce qu'ils produisent par tick
 const RECRUITS={
@@ -2519,7 +2522,7 @@ const BUILDINGS={
   // Barrage hydroélectrique : à poser en travers d'un ruisseau/vallon. Retient l'eau (réservoir)
   // et produit de l'énergie -> revenu en écus (hydroélectricité). Débloqué à la Cité (palier avancé
   // du prototype ; un vrai âge industriel viendra étendre AGES).
-  barrage:{nom:'Barrage', emoji:'🌊', cost:{pierre:80,fer:8}, prodBonus:{ecus:1.6}, bp:'barrage', age:2, hint:'Pose-le en travers d’un ruisseau ou d’un vallon'},
+  barrage:{nom:'Barrage', emoji:'🌊', cost:{pierre:80,fer:8}, prodBonus:{ecus:1.6}, bp:'barrage', age:4, hint:'Pose-le en travers d’un ruisseau ou d’un vallon'},
 };
 const EMP=()=>player.emp;
 const ageMult=()=>AGES[player.emp.age].mult;
