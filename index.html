@@ -1056,6 +1056,23 @@ function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondati
   setW(hx+wx-1,hy+1,hz-wz+1,TORCH);                // torche intérieure
   if(withBench)setW(hx-wx+1,hy+1,hz+wz-1,ETABLI);  // une maison = atelier
 }
+/* ---- Lacs d'altitude : bassins de montagne remplis d'eau (au-dessus du niveau mer) ---- */
+function lakeAt(cellX,cellZ){
+  if(hash2(cellX,cellZ,6101)>=.30)return null;
+  const ox=cellX*96+20+Math.floor(hash2(cellX,cellZ,6102)*56);
+  const oz=cellZ*96+20+Math.floor(hash2(cellX,cellZ,6103)*56);
+  const h=terrainHeight(ox,oz);
+  if(h<=SEA+8||h>=SNOWLINE+8)return null;          // en altitude, ni océan ni au-dessus des pics
+  let rim=h, isBasin=true;                          // le centre doit être un vrai creux
+  for(let a=0;a<8;a++){
+    const dx=Math.round(Math.cos(a*Math.PI/4)*8),dz=Math.round(Math.sin(a*Math.PI/4)*8);
+    const hh=terrainHeight(ox+dx,oz+dz);
+    if(hh<h)isBasin=false;                          // un voisin plus bas → pas un bassin fermé
+    if(hh>rim)rim=hh;
+  }
+  if(!isBasin||rim-h<2)return null;                 // besoin d'un rebord
+  return{ox,oz,level:h+Math.min(3,rim-h-1),r:5+Math.floor(hash2(cellX,cellZ,6104)*4)};
+}
 /* ---- Cités perdues : ruines rares de pierre moussue (1 cellule de 128 sur ~6) ---- */
 function ruinAt(cellX,cellZ){
   if(hash2(cellX,cellZ,8001)>=.16)return null;
@@ -1231,6 +1248,21 @@ function generateChunkData(cx,cz){
       setW(ox+2,h+1,oz,FOUR);
       if(ox>=wx0&&ox<wx0+CHUNK&&oz>=wz0&&oz<wz0+CHUNK&&!chaletsList.some(c2=>c2.x===ox&&c2.z===oz))
         chaletsList.push({x:ox,y:h+1,z:oz});
+    }
+  }
+  // lacs d'altitude : eau dans les bassins de montagne (rives enneigées ; base des futurs barrages)
+  {
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=12;
+    const cX0=Math.floor((wx0-M)/96),cX1=Math.floor((wx0+CHUNK-1+M)/96);
+    const cZ0=Math.floor((wz0-M)/96),cZ1=Math.floor((wz0+CHUNK-1+M)/96);
+    const lakes=[];
+    for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){const l=lakeAt(ccx,ccz);if(l)lakes.push(l);}
+    for(const l of lakes)for(let tx=0;tx<CHUNK;tx++)for(let tz=0;tz<CHUNK;tz++){
+      const wx=wx0+tx,wz=wz0+tz,dx=wx-l.ox,dz=wz-l.oz;
+      if(dx*dx+dz*dz>l.r*l.r)continue;
+      const hcol=terrainHeight(wx,wz);
+      if(hcol<l.level){for(let y=hcol+1;y<=l.level;y++)b[lidx(tx,y,tz)]=WATER;}
+      else if(hcol<=l.level+1)b[lidx(tx,hcol,tz)]=SNOW;   // rive enneigée
     }
   }
   // villages : hameaux de plusieurs maisons (Plaines/Forêt), reliées par des sentiers
@@ -3737,6 +3769,7 @@ window.__debug={
   look:(yaw,pitch)=>{player.yaw=yaw;player.pitch=pitch;},
   teleport:(x,y,z)=>{player.pos.set(x,y,z);player.vel.set(0,0,0);},
   findVillage:()=>{for(let r=1;r<40;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const v=villageAt(cx,cz);if(v)return{cx,cz,...v};}return null;},
+  findLake:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const l=lakeAt(cx,cz);if(l)return{cx,cz,...l};}return null;},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
