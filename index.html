@@ -823,10 +823,13 @@ waterCv.width=waterCv.height=64;
   const wc=waterCv.getContext('2d');
   const img=wc.createImageData(64,64);
   for(let y=0;y<64;y++)for(let x=0;x<64;x++){
-    const n=fbm2(x*.12,y*.12,91,3)-.5;
-    const rip=Math.sin((x+y*.6)*.5+n*9)*10+n*30;
+    const n=fbm2(x*.12,y*.12,91,3)-.5, n2=fbm2(x*.06,y*.06,93,2)-.5; // ondulations fines + larges
+    const rip=Math.sin((x+y*.6)*.5+n*9)*10+n*26;
+    const spark=fbm2(x*.5,y*.5,95,2)>.66?42:0;                       // reflets scintillants
     const i=(y*64+x)*4;
-    img.data[i]=36+rip*.35;img.data[i+1]=82+rip*.6;img.data[i+2]=178+rip;img.data[i+3]=255;
+    img.data[i]=20+rip*.3+spark+n2*20;      // bleu profond
+    img.data[i+1]=72+rip*.55+spark+n2*24;
+    img.data[i+2]=150+rip+spark;img.data[i+3]=255;
   }
   wc.putImageData(img,0,0);
 }
@@ -1546,7 +1549,7 @@ waterTex.colorSpace=THREE.SRGBColorSpace;
 waterTex.wrapS=waterTex.wrapT=THREE.RepeatWrapping;
 
 const solidMat=new THREE.MeshLambertMaterial({map:atlasTex,vertexColors:true,alphaTest:.5});
-const waterMat=new THREE.MeshLambertMaterial({map:waterTex,transparent:true,opacity:.72,depthWrite:false,side:THREE.DoubleSide});
+const waterMat=new THREE.MeshPhongMaterial({map:waterTex,transparent:true,opacity:.8,depthWrite:false,side:THREE.DoubleSide,specular:new THREE.Color(0x9fc4e6),shininess:95}); // Phong = reflet spéculaire du soleil sur l'eau
 const glowMat=new THREE.MeshLambertMaterial({map:atlasTex,alphaTest:.5,emissive:new THREE.Color(1,.62,.25),emissiveIntensity:.85});
 const flatMat=new THREE.MeshLambertMaterial({vertexColors:true});
 // végétation décorative balancée par le vent (shader injecté)
