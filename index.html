@@ -3194,14 +3194,18 @@ function cycleSlot(d){
   updateHotbar();
 }
 document.addEventListener('mousemove',e=>{
-  if(document.pointerLockElement!==renderer.domElement||state.paused||player.dead)return;
+  // visée : avec pointer lock (normal) OU sans verrou en repli (WKWebView) — le mouvement de
+  // la souris fait tourner la vue dès qu'on joue. Un clic dans la vue tente de reprendre le verrou.
+  if(!state.playing||state.paused||player.dead||state.dialog)return;
   const s=.0022*settings.sens;
   player.yaw-=e.movementX*s;
   player.pitch-=e.movementY*s*(settings.invertY?-1:1);
   player.pitch=clamp(player.pitch,-Math.PI/2+.01,Math.PI/2-.01);
 });
 document.addEventListener('mousedown',e=>{
-  if(document.pointerLockElement!==renderer.domElement)return;
+  if(!state.playing||state.paused||player.dead||state.dialog)return; // clics ignorés hors jeu
+  // tente de (re)capturer la souris si dispo ; sinon on joue quand même (visée sans verrou)
+  if(document.pointerLockElement!==renderer.domElement)try{renderer.domElement.requestPointerLock?.();}catch(_){}
   if(pendingBuild&&e.button===0){pendingBuild=null;toast('Construction annulée');return;} // clic gauche annule un plan d'empire armé
   if(e.button===0){leftHeld=true;player.swingT=0;}
   if(e.button===2){rightHeld=true;placeTimer=0;}
@@ -3469,8 +3473,11 @@ function enterGame(viaGamepad=false){
   state.firstPlay=false;
   state.cinematic=false;
   state.playing=true;
-  if(viaGamepad){state.paused=false;syncMenuVisibility();}
-  else renderer.domElement.requestPointerLock?.();
+  state.paused=false;                 // le jeu démarre TOUJOURS (ne dépend plus du pointer lock)
+  syncMenuVisibility();               // masque le menu immédiatement
+  // capture de la souris en best-effort : si le pointer lock échoue (WKWebView, cooldown Échap),
+  // le jeu tourne quand même — un clic dans la vue le réessaie (voir handler plus bas).
+  if(!viaGamepad)try{renderer.domElement.requestPointerLock?.();}catch(_){}
   renderTuto();
   showKeyhints();
   if(wasFirst)introStory();
@@ -3525,7 +3532,7 @@ const SETTING_DEFS=[
   {k:'sens',type:'range',label:'Sensibilité souris',min:.2,max:3,step:.1,fmt:v=>'×'+(+v).toFixed(1)},
   {k:'gpSens',type:'range',label:'Sensibilité manette',min:.2,max:3,step:.1,fmt:v=>'×'+(+v).toFixed(1)},
   {k:'rd',type:'range',label:"Distance d'affichage",min:3,max:14,step:1,fmt:v=>v+' chunks'},
-  {k:'dayMin',type:'range',label:'Durée du jour',min:2,max:20,step:1,fmt:v=>v+' min'},
+  {k:'dayMin',type:'range',label:'Durée du jour',min:2,max:60,step:1,fmt:v=>v>=60?'1 h':(v%60===0?(v/60)+' h':v+' min')},
   {k:'volume',type:'range',label:'Volume',min:0,max:1,step:.05,fmt:v=>Math.round(v*100)+'%'},
   {k:'shadows',type:'toggle',label:'Ombres portées'},
   {k:'clouds',type:'toggle',label:'Nuages'},
