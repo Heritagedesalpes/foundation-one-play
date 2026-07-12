@@ -1073,6 +1073,36 @@ function lakeAt(cellX,cellZ){
   if(!isBasin||rim-h<2)return null;                 // besoin d'un rebord
   return{ox,oz,level:h+Math.min(3,rim-h-1),r:5+Math.floor(hash2(cellX,cellZ,6104)*4)};
 }
+/* ---- Ruisseaux : sources d'altitude qui descendent la pente (base des futurs barrages) ---- */
+const _STREAM_MAX=52, _streamPaths=new Map();
+function springAt(cellX,cellZ){
+  if(hash2(cellX,cellZ,7301)>=.20)return null;
+  const ox=cellX*112+18+Math.floor(hash2(cellX,cellZ,7302)*76);
+  const oz=cellZ*112+18+Math.floor(hash2(cellX,cellZ,7303)*76);
+  const h=terrainHeight(ox,oz);
+  if(h<SNOWLINE-24||h>=HEIGHT-3)return null;         // sources en haute montagne, sous les pics
+  let lo=h;                                          // besoin d'une pente pour que ça coule
+  for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]]){const hh=terrainHeight(ox+dx*2,oz+dz*2);if(hh<lo)lo=hh;}
+  if(h-lo<2)return null;
+  return{ox,oz,h};
+}
+function streamPath(cellX,cellZ){                     // descente de plus grande pente, mise en cache
+  const key=cellX+','+cellZ; if(_streamPaths.has(key))return _streamPaths.get(key);
+  const s=springAt(cellX,cellZ); let pts=null;
+  if(s){
+    pts=[]; let x=s.ox,z=s.oz;
+    for(let step=0;step<_STREAM_MAX;step++){
+      let bx=x,bz=z,bh=terrainHeight(x,z);
+      for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+        const hh=terrainHeight(x+dx,z+dz);if(hh<bh){bh=hh;bx=x+dx;bz=z+dz;}
+      }
+      if(bx===x&&bz===z)break;                       // minimum local → le ruisseau s'arrête
+      x=bx;z=bz;const y=terrainHeight(x,z); pts.push([x,z,y]);
+      if(y<=SEA)break;                               // rejoint la mer
+    }
+  }
+  _streamPaths.set(key,pts);return pts;
+}
 /* ---- Cités perdues : ruines rares de pierre moussue (1 cellule de 128 sur ~6) ---- */
 function ruinAt(cellX,cellZ){
   if(hash2(cellX,cellZ,8001)>=.16)return null;
@@ -1263,6 +1293,21 @@ function generateChunkData(cx,cz){
       const hcol=terrainHeight(wx,wz);
       if(hcol<l.level){for(let y=hcol+1;y<=l.level;y++)b[lidx(tx,y,tz)]=WATER;}
       else if(hcol<=l.level+1)b[lidx(tx,hcol,tz)]=SNOW;   // rive enneigée
+    }
+  }
+  // ruisseaux : filets d'eau qui descendent des sources de montagne (lit rocheux)
+  {
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,MC=2;
+    const cX0=Math.floor(wx0/112)-MC,cX1=Math.floor((wx0+CHUNK-1)/112)+MC;
+    const cZ0=Math.floor(wz0/112)-MC,cZ1=Math.floor((wz0+CHUNK-1)/112)+MC;
+    for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
+      const path=streamPath(ccx,ccz); if(!path)continue;
+      for(const[px,pz,py]of path){
+        const tx=px-wx0,tz=pz-wz0;
+        if(tx<0||tx>=CHUNK||tz<0||tz>=CHUNK||py<=SEA)continue;
+        b[lidx(tx,py,tz)]=WATER;                     // filet d'eau à la surface
+        if(py-1>=0)b[lidx(tx,py-1,tz)]=STONE;        // lit rocheux
+      }
     }
   }
   // villages : hameaux de plusieurs maisons (Plaines/Forêt), reliées par des sentiers
@@ -3770,6 +3815,7 @@ window.__debug={
   teleport:(x,y,z)=>{player.pos.set(x,y,z);player.vel.set(0,0,0);},
   findVillage:()=>{for(let r=1;r<40;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const v=villageAt(cx,cz);if(v)return{cx,cz,...v};}return null;},
   findLake:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const l=lakeAt(cx,cz);if(l)return{cx,cz,...l};}return null;},
+  findStream:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const p=streamPath(cx,cz);if(p&&p.length>3)return{cx,cz,len:p.length,src:p[0],mid:p[(p.length/2)|0],end:p[p.length-1]};}return null;},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
