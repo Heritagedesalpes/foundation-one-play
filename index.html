@@ -605,6 +605,52 @@ const WOOL_TILE=39, WOOL_IDS=[];
 });
 // alias nommés des laines les plus utilisées par les stamps (bannières, toits colorés)
 const WOOL_WHITE=WOOL_IDS[0],WOOL_YELLOW=WOOL_IDS[4],WOOL_RED=WOOL_IDS[14],WOOL_BLUE=WOOL_IDS[11],WOOL_GREEN=WOOL_IDS[13],WOOL_BLACK=WOOL_IDS[15];
+/* ===== GÉOLOGIE (agent A) — blocs 100-119, objets 226-235, tuiles 40-55 ===== */
+const RED_SAND=100,RED_SANDSTONE=101,
+      TERRACOTTA=102,TERRACOTTA_ORANGE=103,TERRACOTTA_YELLOW=104,TERRACOTTA_WHITE=105,TERRACOTTA_BROWN=106,
+      GRAVEL=107,CLAY=108,SHINGLE=109,SAVANNA_GRASS=110,LATERITE=111,CHALK=112,ROCK_SALT=113,MUD=114,
+      CORAL=115,CORAL_PINK=116,CORAL_BLUE=117,OBSIDIAN=118,TUFF=119;
+const COQUILLAGE=226,SILEX=227,SEL=228,ARGILE=229;
+Object.assign(TILES,{
+  [RED_SAND]:[40,40,40],[RED_SANDSTONE]:[41,41,41],
+  [TERRACOTTA]:[42,42,42],[TERRACOTTA_ORANGE]:[42,42,42],[TERRACOTTA_YELLOW]:[42,42,42],
+  [TERRACOTTA_WHITE]:[42,42,42],[TERRACOTTA_BROWN]:[42,42,42],
+  [GRAVEL]:[43,43,43],[CLAY]:[44,44,44],[SHINGLE]:[45,45,45],
+  [SAVANNA_GRASS]:[47,46,2],[LATERITE]:[48,48,48],[CHALK]:[49,49,49],
+  [ROCK_SALT]:[50,50,50],[MUD]:[51,51,51],
+  [CORAL]:[52,52,52],[CORAL_PINK]:[52,52,52],[CORAL_BLUE]:[52,52,52],
+  [OBSIDIAN]:[53,53,53],[TUFF]:[54,54,54],
+});
+Object.assign(BLOCK_TINT,{
+  [TERRACOTTA]:[.82,.50,.36],[TERRACOTTA_ORANGE]:[.85,.45,.20],[TERRACOTTA_YELLOW]:[.86,.66,.28],
+  [TERRACOTTA_WHITE]:[.86,.82,.76],[TERRACOTTA_BROWN]:[.42,.28,.20],
+  [CORAL]:[.95,.42,.35],[CORAL_PINK]:[.98,.60,.72],[CORAL_BLUE]:[.40,.70,.90],
+});
+Object.assign(NAMES,{
+  [RED_SAND]:'Sable rouge',[RED_SANDSTONE]:'Grès rouge',
+  [TERRACOTTA]:'Terre cuite',[TERRACOTTA_ORANGE]:'Terre cuite orange',[TERRACOTTA_YELLOW]:'Terre cuite jaune',
+  [TERRACOTTA_WHITE]:'Terre cuite blanche',[TERRACOTTA_BROWN]:'Terre cuite brune',
+  [GRAVEL]:'Gravier',[CLAY]:'Argile',[SHINGLE]:'Galets',
+  [SAVANNA_GRASS]:'Herbe dorée',[LATERITE]:'Latérite',[CHALK]:'Calcaire',[ROCK_SALT]:'Sel gemme',[MUD]:'Boue',
+  [CORAL]:'Corail',[CORAL_PINK]:'Corail rose',[CORAL_BLUE]:'Corail bleu',[OBSIDIAN]:'Obsidienne',[TUFF]:'Tuf',
+  [COQUILLAGE]:'Coquillage',[SILEX]:'Silex',[SEL]:'Sel',[ARGILE]:"Boule d'argile",
+});
+Object.assign(HARDNESS,{
+  [RED_SAND]:.5,[SHINGLE]:.55,[GRAVEL]:.6,[CLAY]:.6,[MUD]:.5,[LATERITE]:.55,[SAVANNA_GRASS]:.55,
+  [RED_SANDSTONE]:1.2,[TERRACOTTA]:1.25,[TERRACOTTA_ORANGE]:1.25,[TERRACOTTA_YELLOW]:1.25,
+  [TERRACOTTA_WHITE]:1.25,[TERRACOTTA_BROWN]:1.25,[CHALK]:1.0,[ROCK_SALT]:.9,[TUFF]:1.0,
+  [CORAL]:1.1,[CORAL_PINK]:1.1,[CORAL_BLUE]:1.1,[OBSIDIAN]:14,
+});
+DROPS[SAVANNA_GRASS]=DIRT;
+DROPS[CLAY]=ARGILE;   DROP_N[CLAY]=[4,4];
+DROPS[ROCK_SALT]=SEL; DROP_N[ROCK_SALT]=[2,4];
+[RED_SAND,GRAVEL,CLAY,MUD,LATERITE,SAVANNA_GRASS,SHINGLE].forEach(b=>SOFT.add(b));
+[RED_SANDSTONE,TERRACOTTA,TERRACOTTA_ORANGE,TERRACOTTA_YELLOW,TERRACOTTA_WHITE,TERRACOTTA_BROWN,
+ CHALK,ROCK_SALT,TUFF,CORAL,CORAL_PINK,CORAL_BLUE,OBSIDIAN].forEach(b=>STONY.add(b));
+PLACE_ORDER.push(RED_SAND,RED_SANDSTONE,TERRACOTTA,TERRACOTTA_ORANGE,TERRACOTTA_YELLOW,TERRACOTTA_WHITE,
+  TERRACOTTA_BROWN,GRAVEL,CLAY,SHINGLE,SAVANNA_GRASS,LATERITE,CHALK,ROCK_SALT,MUD,
+  CORAL,CORAL_PINK,CORAL_BLUE,OBSIDIAN,TUFF);
+const TERRA_BANDS=[TERRACOTTA_ORANGE,TERRACOTTA,TERRACOTTA_YELLOW,TERRACOTTA_BROWN,TERRACOTTA_WHITE,TERRACOTTA];
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -934,6 +980,78 @@ drawTile(39,(x,y)=>{ // laine blanche neutre (teintée par BLOCK_TINT via vertex
   const n=texN(x,y,73,.4)*16+ (hash2(x,y,74)<.12?10:0); // fibres moutonneuses
   const v=236+n;return[v,v,v];
 });
+/* ===== GÉOLOGIE : tuiles 40-55 ===== */
+drawTile(40,(x,y)=>{ // sable rouge : ondulations, teinte ocre-rouge
+  const w=Math.sin((y+Math.sin(x*.4)*2)*.9)*7,n=jit(x,y,4001)*8;
+  return[196+w+n,96+w*.6+n,58+w*.4+n];
+});
+drawTile(41,(x,y)=>{ // grès rouge : bancs horizontaux
+  const band=Math.sin(y*.7)*6,n=texN(x*.5,y,4002,.35)*12,line=(y%9<1)?-18:0;
+  return[176+band+n+line,86+band*.6+n+line,54+band*.4+n+line];
+});
+drawTile(42,(x,y)=>{ // terre cuite : base NEUTRE claire à grain horizontal (teintée par BLOCK_TINT)
+  const band=(y%8<1.2)?-22:0,n=texN(x*.6,y*1.1,4003,.3)*16,g=jit(x,y,4004)*8;
+  const v=206+n+band+g;return[v,v*.93,v*.86];
+});
+drawTile(43,(x,y)=>{ // gravier : petits cailloux en cellules
+  const c=hash2((x/4)|0,(y/4)|0,4005),j=jit(x,y,4006)*10,tone=92+c*66;
+  const edge=((x&3)===0||(y&3)===0)?-16:0;
+  return[tone+j+edge,tone*.94+j+edge,tone*.85+j+edge];
+});
+drawTile(44,(x,y)=>{ // argile : gris-bleu lisse
+  const n=texN(x,y,4007,.22)*16,sp=hash2(x,y,4008)<.03?-10:0,v=150+n+sp;
+  return[v,v+4,v+12];
+});
+drawTile(45,(x,y)=>{ // galets : disques lisses jointifs
+  let best=99,bi=0;
+  for(let i=0;i<10;i++){const sx=hash2(i,1,4009)*32,sy=hash2(i,2,4009)*32,d=Math.hypot(x-sx,y-sy);if(d<best){best=d;bi=i;}}
+  const tone=138+hash2(bi,3,4009)*72,hl=best<3?18:0,edge=best>5.5?-24:0,j=jit(x,y,4010)*5;
+  return[tone+hl+edge+j,tone*.95+hl+edge+j,tone*.82+hl*.7+edge+j];
+});
+drawTile(46,(x,y)=>{ // savane dessus : herbe sèche dorée
+  const patch=fbm2(x*.18,y*.18,4011,3),n=texN(x,y,4012,.35)*26,blade=hash2(x,y,4013)<.12?20:0;
+  const base=patch>.55?[196,178,86]:(patch<.42?[164,142,64]:[182,160,74]);
+  return[base[0]+n*.6+blade,base[1]+n*.5+blade,base[2]+n*.3];
+});
+drawTile(47,(x,y)=>{ // savane côté : latérite + frange d'herbe sèche
+  const edge=5+Math.floor(hash2(x,3,4014)*4);
+  if(y<edge){const n=texN(x,y,4012,.3)*30;return[184+n*.6,160+n*.5,80+n*.3];}
+  const n=texN(x,y,4015,.28)*30;return[150+n,86+n*.8,54+n*.6];
+});
+drawTile(48,(x,y)=>{ // latérite : sol rouge-orangé dense
+  const n=texN(x,y,4016,.26)*30,st=hash2(x,y,4017)<.05?18:0;
+  return[158+n+st,90+n*.7+st,56+n*.5];
+});
+drawTile(49,(x,y)=>{ // calcaire : blanc, fines bandes + nodules de silex
+  const band=Math.sin(y*.5)*4,n=texN(x,y,4018,.2)*10,fl=hash2((x/6)|0,(y/6)|0,4019)<.06?-40:0;
+  const v=234+band+n+fl;return[v,v,v-4];
+});
+drawTile(50,(x,y)=>{ // sel gemme : cristaux blancs légèrement rosés
+  const n=jit(x,y,4020)*10,cr=fbm2(x*.3,y*.3,4021,2),crack=(cr>.6&&cr<.64)?-30:0,sp=hash2(x,y,4022)<.05?20:0;
+  const v=232+n+crack+sp;return[v,v-6,v-2];
+});
+drawTile(51,(x,y)=>{ // boue : brun sombre humide
+  const n=texN(x,y,4023,.24)*20,wet=fbm2(x*.2,y*.2,4024,2)>.6?14:0,sp=hash2(x,y,4025)<.04?-12:0;
+  return[74+n+wet+sp,58+n*.8+wet+sp,42+n*.6+wet*.6+sp];
+});
+drawTile(52,(x,y)=>{ // corail : base NEUTRE noueuse claire (teintée par BLOCK_TINT)
+  const c=fbm2(x*.35,y*.35,4026,3),knob=c>.6?24:(c<.4?-20:0),pore=hash2(x,y,4027)<.10?-18:0;
+  const v=210+knob+pore;return[v,v*.9,v*.86];
+});
+drawTile(53,(x,y)=>{ // obsidienne : quasi noir + reflets pourpres
+  const n=texN(x,y,4028,.3)*12,gl=hash2(x,y,4029)<.04?40:0,pf=fbm2(x*.3,y*.3,4030,2)>.6?10:0;
+  const v=22+n+gl;return[v+pf,v*.8+pf,v+6+pf*1.4];
+});
+drawTile(54,(x,y)=>{ // tuf : gris-vert poreux
+  const n=texN(x,y,4031,.26)*16,hole=hash2(x,y,4032)<.07?-22:0,patch=fbm2(x*.15,y*.15,4033,2)*10;
+  const v=150+n+hole+patch;return[v,v+3,v-2];
+});
+drawTile(55,(x,y)=>{ // coquillage (croix déco, fond transparent)
+  const cx=16,cy=22,d=Math.hypot((x-cx)*1.1,y-cy);
+  if(d>7)return[0,0,0,0];
+  const rib=Math.abs(Math.sin(Math.atan2(y-cy,x-cx)*6))*14,sh=(y-cy)*1.5;
+  return[236-sh+rib,214-sh+rib,196-sh+rib];
+});
 
 // texture d'eau séparée (défilement animé)
 const waterCv=document.createElement('canvas');
@@ -1016,8 +1134,8 @@ function tileUV(ti,u,v){
 // échelle : 1 bloc = 0,5 m — monde façon Terre : mers profondes → hauts sommets glacés
 const CHUNK=16,HEIGHT=200,SEA=58,SNOWLINE=132,ICELINE=166,REACH=6;
 // biomes
-const B_DEEP=0,B_OCEAN=1,B_BEACH=2,B_PLAINS=3,B_FOREST=4,B_JUNGLE=5,B_DESERT=6,B_TUNDRA=7,B_MOUNT=8,B_PEAK=9;
-const BIOME_NAMES=['Océan profond','Océan','Plage','Plaines','Forêt','Forêt tropicale','Désert','Toundra','Montagne','Sommet glacé'];
+const B_DEEP=0,B_OCEAN=1,B_BEACH=2,B_PLAINS=3,B_FOREST=4,B_JUNGLE=5,B_DESERT=6,B_TUNDRA=7,B_MOUNT=8,B_PEAK=9,B_SAVANE=10;
+const BIOME_NAMES=['Océan profond','Océan','Plage','Plaines','Forêt','Forêt tropicale','Désert','Toundra','Montagne','Sommet glacé','Savane'];
 
 const heightCache=new Map();
 function terrainHeight(x,z){
@@ -1032,11 +1150,29 @@ function terrainHeight(x,z){
     if(cont<.40){                                  // bassin océanique (plus bas = plus profond)
       const depth=(.40-cont)/.40;
       h=SEA-4-depth*depth*50;
+      // bancs de sable & platiers récifaux : hauts-fonds qui remontent près du littoral
+      if(depth<.16){
+        const bar=fbm2(x*.05,z*.05,4504);
+        if(bar>.60)h+=(bar-.60)*34;
+      }
     }else{
       const land=clamp((cont-.40)/.60,0,1);        // 0..1 de la côte à l'intérieur
       const mountainous=clamp((region-.5)*3,0,1);  // ~zones montagneuses (contraste renforcé)
       const mtnH=mountainous*mountainous*(70+ridge*ridge*135); // sommets bien plus hauts
       h=SEA+land*16+hills*10+detail*4+mtnH;
+      const gc=climate(x,z),gt=gc[0],gm=gc[1];
+      if(gt>.52&&gm<.42){                              // DUNES (chaud & sec) : crêtes douces
+        const dune=fbm2(x*.028,z*.028,4501);
+        h+=dune*dune*7;
+      }
+      if(gt>.5&&gm<.4){                                // MESA/BADLANDS : plateaux étagés (sommets plats)
+        const mesaMask=fbm2(x*.006,z*.006,4502);
+        if(mesaMask>.60)h+=Math.floor((mesaMask-.60)/.08)*6; // marches de 6 blocs
+      }
+      if(land<.05&&gm>=.4){                            // FALAISES côtières (frange littorale non désertique)
+        const cliff=fbm2(x*.02,z*.02,4503);
+        if(cliff>.60)h+=(cliff-.60)*55;
+      }
     }
     h=Math.floor(clamp(h,3,HEIGHT-4));
     if(heightCache.size>90000)heightCache.clear();
@@ -1068,6 +1204,7 @@ function biomeAt(x,z){
   if(temp<.3)return B_TUNDRA;                       // froid
   if(temp>.52&&m<.4)return B_DESERT;                // chaud + sec = grands déserts distincts
   if(temp>.5&&m>.62)return B_JUNGLE;                // chaud + très humide = jungle distincte
+  if(temp>.5&&m>=.4&&m<.58)return B_SAVANE;         // chaud + humidité MOYENNE (entre désert et forêt)
   if(m>.58)return B_FOREST;                         // humide = forêt (bande plus étroite)
   return B_PLAINS;                                  // le reste = PLAINES OUVERTES (majoritaire)
 }
@@ -1099,11 +1236,49 @@ function vegAt(wx,wz){
   else if(bi===B_DESERT){ if(r<.012)return['cactus',2+Math.floor(hash2(wx,wz,1234)*3)]; }
   return 0;
 }
+/* ===== GÉOLOGIE : matériaux de colonne par biome ===== */
+function geology(wx,wz,h,bi){
+  let surf=surfaceBlock(bi,h), sub=subBlock(bi), strata=null, reef=false;
+  if(bi===B_DESERT){
+    const region=fbm2(wx*.004,wz*.004,4530);
+    const mesaMask=fbm2(wx*.006,wz*.006,4502);
+    const salt=fbm2(wx*.02,wz*.02,4531);
+    if(mesaMask>.60){                                // MESA : strates de terre cuite + substrat grès rouge/tuf
+      const off=(mesaMask*6)|0;
+      surf=TERRA_BANDS[((h+off)>>1)%TERRA_BANDS.length];
+      sub=RED_SANDSTONE;
+      strata=(y)=> (y>h-16) ? TERRA_BANDS[((y+off)>>1)%TERRA_BANDS.length]
+                            : (hash2(wx,y,4534)<.15?TUFF:RED_SANDSTONE);
+    }else if(salt>.72&&h<=SEA+4){ surf=ROCK_SALT; sub=ROCK_SALT; } // SALAR (cuvette basse & aride)
+    else if(region>.52){ surf=RED_SAND; sub=RED_SAND; }            // DÉSERT ROUGE
+    else { surf=SAND; sub=SAND; }                                  // désert clair (défaut existant)
+  }else if(bi===B_SAVANE){
+    surf=SAVANNA_GRASS; sub=LATERITE;
+  }else if(bi===B_BEACH){
+    surf=fbm2(wx*.03,wz*.03,4532)>.56?SHINGLE:SAND;                // plages de GALETS vs sable
+    sub=SAND; reef=true;
+  }else if(bi===B_OCEAN||bi===B_DEEP){
+    reef=true;
+    if(fbm2(wx*.04,wz*.04,4533)>.66){surf=CLAY;sub=CLAY;}          // bancs d'ARGILE sous-marins
+  }else if((bi===B_FOREST||bi===B_PLAINS)&&h<=SEA+2&&climate(wx,wz)[1]>.6){
+    surf=MUD; sub=MUD;                                             // MARAIS / estuaire humide
+  }
+  // FALAISES CALCAIRES : frange côtière relevée hors désert (blanc de Douvres)
+  if((bi===B_PLAINS||bi===B_FOREST||bi===B_SAVANE)&&h>SEA+8){
+    const cont=fbm2(wx*.0012,wz*.0012,7);
+    if(cont>=.40&&cont<.445&&fbm2(wx*.02,wz*.02,4503)>.60){
+      sub=CHALK;
+      if(h>SEA+14)surf=(bi===B_SAVANE?SAVANNA_GRASS:GRASS);
+    }
+  }
+  return{surf,sub,strata,reef};
+}
 function caveAt(wx,y,wz,h){
   if(y<5||y>h-5||h<=SEA+3)return false;
   return fbm3(wx*.028,y*.04,wz*.028,555)>.64;
 }
 function oreAt(wx,y,wz){
+  if(y<10&&hash3(wx,y,wz,4550)<.02)return OBSIDIAN; // roche vitreuse profonde (« près lave » à terme)
   if(hash3(wx,y,wz,801)<.016)return COAL_ORE;
   if(y<86&&hash3(wx,y,wz,803)<.011)return IRON_ORE;
   if(y<74&&hash3(wx,y,wz,809)<.010)return ENERGY_ORE;
@@ -1338,19 +1513,30 @@ function generateChunkData(cx,cz){
     const wx=cx*CHUNK+lx,wz=cz*CHUNK+lz;
     const h=Math.min(terrainHeight(wx,wz),HEIGHT-2);
     const bi=biomeAt(wx,wz);
-    const surf=surfaceBlock(bi,h),sub=subBlock(bi);
+    const G=geology(wx,wz,h,bi);                    // GÉOLOGIE : sol/sous-sol/strates par biome
+    const surf=G.surf,sub=G.sub;
     b[lidx(lx,0,lz)]=BEDROCK;
     for(let y=1;y<=h;y++){
       if(caveAt(wx,y,wz,h))continue;
       let t;
-      if(y<h-6)t=oreAt(wx,y,wz);
-      else if(y<h)t=sub;
-      else t=surf;
+      if(y<h-6)     t=oreAt(wx,y,wz);
+      else if(y<h)  t=G.strata?G.strata(y):sub;     // strates mesa colorées
+      else          t=surf;
       b[lidx(lx,y,lz)]=t;
     }
     // eau (mers/lacs), et glace qui recouvre l'eau en biome froid
     for(let y=h+1;y<=SEA;y++)b[lidx(lx,y,lz)]=WATER;
     if((bi===B_TUNDRA||bi===B_PEAK)&&h<SEA)b[lidx(lx,SEA,lz)]=ICE;
+    // RÉCIFS CORALLIENS : hauts-fonds CHAUDS et peu profonds (lagons)
+    if(G.reef&&h>SEA-8&&h<=SEA&&climate(wx,wz)[0]>.5){
+      const cm=fbm2(wx*.05,wz*.05,4540);
+      if(cm>.60){
+        const s=hash2(wx,wz,4541);
+        const cor=s<.5?CORAL:(s<.75?CORAL_PINK:CORAL_BLUE);
+        b[lidx(lx,h,lz)]=cor;                        // tête de corail sur le fond
+        if(cm>.78&&h+1<=SEA)b[lidx(lx,h+1,lz)]=cor;  // massif qui monte vers la surface
+      }
+    }
   }
   // végétation par biome (marge 4 blocs pour les houppiers larges de la jungle)
   for(let tx=-4;tx<CHUNK+4;tx++)for(let tz=-4;tz<CHUNK+4;tz++){
@@ -1927,6 +2113,9 @@ function buildChunkMesh(cx,cz){
     // blé sur la terre labourée des champs (épis dorés qui ondulent)
     if(bt===FARMLAND&&gb(wx,y+1,wz)===AIR&&hash2(wx,wz,305)<.88)
       pushDecoCross(wx,y+1,wz,33,1,.72+hash2(wx,wz,306)*.3);
+    // coquillages épars sur le littoral (déco croix, tuile 55)
+    if((bt===SAND||bt===SHINGLE)&&y<=SEA+2&&gb(wx,y+1,wz)===AIR&&hash2(wx,wz,4560)<.05)
+      pushDecoCross(wx,y+1,wz,55,1,.28+hash2(wx,wz,4561)*.12);
     for(let f=0;f<6;f++){
       const F=FACES[f];
       const nb=gb(wx+F.dir[0],y+F.dir[1],wz+F.dir[2]);
@@ -3559,6 +3748,13 @@ const RECIPES=[
   {out:[GOLD_ING,2],ins:[[RAW_GOLD,2],[ITEM_COAL,1]],station:'four'},
   {out:[GLASS,4],ins:[[SAND,4],[ITEM_COAL,1]],station:'four'},
   {out:[STONE,4],ins:[[COBBLE,4],[ITEM_COAL,1]],station:'four'},
+  // GÉOLOGIE : matériaux dérivés
+  {out:[RED_SANDSTONE,1],ins:[[RED_SAND,4]],station:'etabli'},   // grès rouge (miroir du grès)
+  {out:[CLAY,1],ins:[[ARGILE,4]],station:'etabli'},              // recompacter l'argile
+  {out:[TERRACOTTA,1],ins:[[CLAY,1]],station:'four'},            // argile cuite → terre cuite
+  {out:[BRICKS,4],ins:[[CLAY,4],[ITEM_COAL,1]],station:'four'},  // variante briques depuis argile
+  {out:[SILEX,2],ins:[[GRAVEL,3]],station:'etabli'},             // débitage du gravier
+  {out:[GLASS,4],ins:[[RED_SAND,4],[ITEM_COAL,1]],station:'four'}, // verre depuis sable rouge
 ];
 RECIPES.push(...GEN_RECIPES); // recettes des dalles/escaliers générés (pavé, grès, briques, briques de pierre)
 const insOK=r=>r.ins.every(([id,n])=>(player.inv[id]||0)>=n);
@@ -4119,6 +4315,13 @@ function iconCanvas(id){
     const c2=id===RAW_IRON?'#b98a6a':'#d8b13c';
     rect(9,12,14,10,c2);rect(12,9,8,4,c2);rect(14,14,5,3,'rgba(255,255,255,.35)');rect(10,19,4,3,'rgba(0,0,0,.25)');
   }
+  else if(id===COQUILLAGE){ // coquillage nacré
+    for(let i=0;i<6;i++){const a=(i/6)*Math.PI;rect(16+Math.cos(a)*i,20-Math.sin(a)*i*.6,3,3,'#f0d8c0');}
+    rect(14,18,6,8,'#f6e6d6');rect(15,24,4,3,'#d8b89a');
+  }
+  else if(id===SILEX){ rect(11,14,10,8,'#4a4640');rect(13,12,6,3,'#5c584f');rect(12,20,5,3,'#2f2c28');rect(18,16,3,3,'rgba(255,255,255,.4)'); }
+  else if(id===SEL){ rect(12,13,9,9,'#f2eef0');rect(10,16,4,4,'#e8e0e4');rect(19,18,4,4,'#e8e0e4');rect(14,15,3,3,'rgba(255,255,255,.7)'); }
+  else if(id===ARGILE){ rect(11,14,10,9,'#9aa2ab');rect(13,12,7,3,'#aab0b8');rect(13,20,6,3,'#828a94'); }
   else if(toolKind(id)){
     const c2=TIER_COLOR[toolTierOf(id)],k=toolKind(id);
     if(k==='epee'){ // épée : garde + lame diagonale
@@ -4409,6 +4612,18 @@ window.__debug={
   chalets:()=>chaletsList.slice(0,12),
   ruins:()=>ruinsList.slice(0,12),
   biome:(x,z)=>BIOME_NAMES[biomeAt(x,z)],
+  findSavane:()=>__debug.findBiome('savane'),
+  findMesa:()=>{ for(let r=0;r<500;r+=3)for(let a=0;a<32;a++){
+      const x=Math.round(Math.cos(a/32*6.28)*r*4),z=Math.round(Math.sin(a/32*6.28)*r*4);
+      if(biomeAt(x,z)===B_DESERT&&fbm2(x*.006,z*.006,4502)>.62)return{x,z,y:terrainHeight(x,z)};}
+    return null; },
+  findReef:()=>{ for(let r=0;r<500;r+=2)for(let a=0;a<32;a++){
+      const x=Math.round(Math.cos(a/32*6.28)*r*4),z=Math.round(Math.sin(a/32*6.28)*r*4),h=terrainHeight(x,z);
+      if(h>SEA-8&&h<=SEA&&climate(x,z)[0]>.5&&fbm2(x*.05,z*.05,4540)>.62)return{x,z,y:h};}
+    return null; },
+  geoGive:()=>{[RED_SAND,RED_SANDSTONE,TERRACOTTA,TERRACOTTA_ORANGE,TERRACOTTA_YELLOW,TERRACOTTA_WHITE,
+    TERRACOTTA_BROWN,GRAVEL,CLAY,SHINGLE,SAVANNA_GRASS,LATERITE,CHALK,ROCK_SALT,MUD,CORAL,CORAL_PINK,
+    CORAL_BLUE,OBSIDIAN,TUFF].forEach(b=>invAdd(b,8)); updateHotbar(); return 'blocs géo donnés'; },
   biomeScan:()=>{ // distribution des biomes + altitude max sur une large zone
     const counts={},N=BIOME_NAMES.length; let maxH=0,minH=999;
     for(let x=-800;x<=800;x+=40)for(let z=-800;z<=800;z+=40){
