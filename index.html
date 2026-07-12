@@ -1425,15 +1425,15 @@ function generateChunkData(cx,cz){
         if(t===ETABLI)etablis.add(k);
         if(t===FOUR)fours.add(k);
       };
-      // sol en planches + volume intérieur dégagé (2,5 m sous plafond)
+      // fondation pierre taillée + volume intérieur dégagé (2,5 m sous plafond)
       for(let x=ox-3;x<=ox+3;x++)for(let z=oz-2;z<=oz+3;z++){
-        setW(x,h,z,PLANKS);
-        for(let y=h+1;y<=h+5;y++)setW(x,y,z,AIR);
+        setW(x,h,z,STONE_BRICKS);
+        for(let y=h+1;y<=h+6;y++)setW(x,y,z,AIR);
       }
-      // murs (4 blocs = 2 m)
+      // murs en épicéa (bois alpin), 4 blocs = 2 m
       for(let y=h+1;y<=h+4;y++){
-        for(let x=ox-3;x<=ox+3;x++){setW(x,y,oz-2,PLANKS);setW(x,y,oz+3,PLANKS);}
-        for(let z=oz-2;z<=oz+3;z++){setW(ox-3,y,z,PLANKS);setW(ox+3,y,z,PLANKS);}
+        for(let x=ox-3;x<=ox+3;x++){setW(x,y,oz-2,SPRUCE_PLANKS);setW(x,y,oz+3,SPRUCE_PLANKS);}
+        for(let z=oz-2;z<=oz+3;z++){setW(ox-3,y,z,SPRUCE_PLANKS);setW(ox+3,y,z,SPRUCE_PLANKS);}
       }
       // poteaux d'angle en rondins (jusqu'au haut des murs)
       for(const[px2,pz2]of[[ox-3,oz-2],[ox+3,oz-2],[ox-3,oz+3],[ox+3,oz+3]])
@@ -1441,17 +1441,15 @@ function generateChunkData(cx,cz){
       // fenêtres (hauteur du regard) + porte 2 m (côté sud)
       setW(ox-3,h+3,oz,GLASS);setW(ox+3,h+3,oz,GLASS);setW(ox,h+3,oz-2,GLASS);
       for(let y=h+1;y<=h+4;y++)setW(ox,y,oz+3,AIR);
-      // toit à deux pentes (pignon) : faîte le long de l'axe X, avant-toits en rondins
-      const rz0=oz-2,rz1=oz+3,ridge=h+5+Math.floor((rz1-rz0)/2);
+      // toit alpin à DEUX PENTES en ESCALIERS d'épicéa (faîte le long de X, débord d'1) + pignons pleins
+      const rz0=oz-2,rz1=oz+3,SP=STAIR_ORIENT['spruce'],SPS=SLAB_OF['spruce'],ridge=h+5+2;
       for(let z=rz0;z<=rz1;z++){
-        const y=h+5+Math.min(z-rz0,rz1-z);
-        for(let x=ox-3;x<=ox+3;x++){
-          setW(x,y,z,LOG);                                     // pan de toit en rondins
-          for(let yy=h+5;yy<y;yy++)setW(x,yy,z,(x===ox-3||x===ox+3)?PLANKS:AIR); // pignons pleins
-        }
+        const lift=Math.min(z-rz0,rz1-z),y=h+5+lift, atTop=(z===oz||z===oz+1);
+        for(let x=ox-4;x<=ox+4;x++)setW(x,y,z, atTop?SPS:(z<oz?SP.pz:SP.nz)); // pentes escaliers, faîte en dalle
+        for(let yy=h+5;yy<y;yy++){setW(ox-3,yy,z,SPRUCE_PLANKS);setW(ox+3,yy,z,SPRUCE_PLANKS);} // pignons pleins
       }
-      // cheminée en pierre qui traverse le toit (foyer ouvert en bas)
-      for(let y=h+1;y<=ridge+2;y++)setW(ox-2,y,oz+2,COBBLE);
+      // cheminée en pierre taillée qui traverse le toit (foyer ouvert en bas)
+      for(let y=h+1;y<=ridge+2;y++)setW(ox-2,y,oz+2,STONE_BRICKS);
       setW(ox-2,h+1,oz+2,AIR);
       // aménagement : torche, établi, four
       setW(ox-2,h+1,oz-1,TORCH);
