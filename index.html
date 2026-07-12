@@ -457,7 +457,8 @@ const AIR=0,GRASS=1,DIRT=2,STONE=3,SAND=4,LOG=5,LEAVES=6,PLANKS=7,GLASS=8,WATER=
       ICE=24,JUNGLE_LEAVES=25,CACTUS=26,MOSSY=27,FARMLAND=28,
       STONE_SLAB=29,PLANK_SLAB=30,
       STONE_STAIR_PX=31,STONE_STAIR_NX=32,STONE_STAIR_PZ=33,STONE_STAIR_NZ=34,
-      PLANK_STAIR_PX=35,PLANK_STAIR_NX=36,PLANK_STAIR_PZ=37,PLANK_STAIR_NZ=38;
+      PLANK_STAIR_PX=35,PLANK_STAIR_NX=36,PLANK_STAIR_PZ=37,PLANK_STAIR_NZ=38,
+      BRICKS=39,SANDSTONE=40,STONE_BRICKS=41;
 // forme de rendu/collision non-cubique par bloc (défaut = cube plein). Étendu plus bas pour les escaliers.
 const SHAPE={[STONE_SLAB]:'slab',[PLANK_SLAB]:'slab'};
 const STAIR={}; // rempli après les tables : STAIR[id]={mat,dir}
@@ -477,6 +478,7 @@ const TILES={
   [ICE]:[28,28,28],[JUNGLE_LEAVES]:[29,29,29],[CACTUS]:[30,30,30],[MOSSY]:[31,31,31],
   [FARMLAND]:[2,32,2],  // côtés = terre, dessus = terre labourée
   [STONE_SLAB]:[3,3,3],[PLANK_SLAB]:[8,8,8], // dalles (rendues à mi-hauteur)
+  [BRICKS]:[34,34,34],[SANDSTONE]:[35,35,35],[STONE_BRICKS]:[36,36,36], // pierres taillées
   [WATER]:[3,3,3],
 };
 const NAMES={
@@ -488,6 +490,7 @@ const NAMES={
   [ETABLI]:'Établi',[FOUR]:'Four',
   [ICE]:'Glace',[JUNGLE_LEAVES]:'Feuillage tropical',[CACTUS]:'Cactus',[MOSSY]:'Pierre moussue',[FARMLAND]:'Terre labourée',
   [STONE_SLAB]:'Dalle de pierre',[PLANK_SLAB]:'Dalle de planches',
+  [BRICKS]:'Briques',[SANDSTONE]:'Grès',[STONE_BRICKS]:'Briques de pierre',
   [ITEM_COAL]:'Charbon',[STICK]:'Bâton',[IRON_ING]:'Fer',[GOLD_ING]:'Or',[DIAMOND_GEM]:'Diamant',
   [RAW_IRON]:'Fer brut',[RAW_GOLD]:'Or brut',
   [PICK_WOOD]:'Pioche en bois',[PICK_STONE]:'Pioche en pierre',[PICK_IRON]:'Pioche en fer',[PICK_DIAMOND]:'Pioche en diamant',
@@ -498,7 +501,7 @@ const HARDNESS={
   [GOLD_ORE]:2.2,[DIAMOND_ORE]:2.6,[ENERGY_ORE]:2.2,[WIRE]:.05,[LEVER]:.2,[LAMP]:.5,
   [ETABLI]:.9,[FOUR]:1.6,
   [ICE]:.5,[JUNGLE_LEAVES]:.25,[CACTUS]:.4,[MOSSY]:1.6,[BEDROCK]:Infinity,[FARMLAND]:.5,
-  [STONE_SLAB]:1.6,[PLANK_SLAB]:.9,
+  [STONE_SLAB]:1.6,[PLANK_SLAB]:.9,[BRICKS]:1.8,[SANDSTONE]:1.2,[STONE_BRICKS]:1.7,
 };
 // bloc cassé → ce qu'on ramasse (null = rien)
 const DROPS={
@@ -548,7 +551,7 @@ const WOODY=new Set([LOG,PLANKS,ETABLI,CACTUS]);
 const SOFT=new Set([DIRT,GRASS,SAND,SNOW]);
 const ORE_TIER={[COAL_ORE]:1,[IRON_ORE]:2,[GOLD_ORE]:3,[DIAMOND_ORE]:3,[ENERGY_ORE]:3};
 const CREATIVE_PALETTE=[GRASS,DIRT,STONE,COBBLE,SAND,LOG,PLANKS,LEAVES,GLASS,TORCH,SNOW,DIAMOND_ORE,WIRE,LEVER,LAMP,ETABLI,FOUR];
-const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,STONE_SLAB,STONE_STAIR_PX,SAND,LOG,PLANKS,PLANK_SLAB,PLANK_STAIR_PX,LEAVES,GLASS,TORCH,ETABLI,FOUR,SNOW,WIRE,LEVER,LAMP,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE];
+const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,STONE_SLAB,STONE_STAIR_PX,STONE_BRICKS,BRICKS,SANDSTONE,SAND,LOG,PLANKS,PLANK_SLAB,PLANK_STAIR_PX,LEAVES,GLASS,TORCH,ETABLI,FOUR,SNOW,WIRE,LEVER,LAMP,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE];
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -847,6 +850,24 @@ drawTile(33,(x,y)=>{ // blé : tiges + épis dorés (croix décorative)
     }
   }
   return[0,0,0,0];
+});
+drawTile(34,(x,y)=>{ // briques rouges : appareil décalé + joints de mortier
+  const row=Math.floor(y/8), off=(row%2)*8;              // rangs décalés
+  const mortar=(y%8<1.4)||(((x+off)%16)<1.4);            // joints clairs
+  const n=texN(x,y,61,.3)*20;
+  if(mortar)return[168+n,150+n,132+n];
+  return[150+n,58+n*.5,44+n*.4];                          // terre cuite rouge
+});
+drawTile(35,(x,y)=>{ // grès : bancs horizontaux + grain
+  const band=Math.sin(y*.7)*6, n=texN(x*.5,y,62,.35)*14, line=(y%9<1)?-16:0;
+  return[222+band+n+line,200+band+n+line,150+band*.7+n+line];
+});
+drawTile(36,(x,y)=>{ // briques de pierre : gros appareil + quelques fissures/mousse
+  const gx=x%16,gy=y%16, joint=(gx<1.3||gy<1.3)?-30:0;
+  const n=texN(x,y,63,.22)*18;
+  const moss=fbm2(x*.18,y*.18,64,2)>.66?-1:0;
+  const v=132+n+joint;
+  return moss?[v*.55,v*.72+14,v*.5]:[v,v,v+3];
 });
 
 // texture d'eau séparée (défilement animé)
@@ -3444,6 +3465,9 @@ const RECIPES=[
   {out:[PLANK_SLAB,6],ins:[[PLANKS,3]],station:'etabli'},
   {out:[STONE_STAIR_PX,4],ins:[[STONE,6]],station:'etabli'}, // escaliers (6 blocs → 4 escaliers)
   {out:[PLANK_STAIR_PX,4],ins:[[PLANKS,6]],station:'etabli'},
+  {out:[SANDSTONE,1],ins:[[SAND,4]],station:'etabli'},        // pierres taillées
+  {out:[STONE_BRICKS,4],ins:[[STONE,4]],station:'etabli'},
+  {out:[BRICKS,4],ins:[[COBBLE,4]],station:'four'},           // briques cuites au four
   // fusion au four
   {out:[IRON_ING,2],ins:[[RAW_IRON,2],[ITEM_COAL,1]],station:'four'},
   {out:[GOLD_ING,2],ins:[[RAW_GOLD,2],[ITEM_COAL,1]],station:'four'},
