@@ -1261,21 +1261,25 @@ function generateChunkData(cx,cz){
           setIfAir(tx+dx,y,tz+dz,LEAVES);
         }
       }
-    }else{ // chêne (rond) ou géant de jungle (large + feuillage tropical)
+    }else{ // chêne (houppier plein et arrondi) ou géant de jungle (large + feuillage tropical)
       const jungle=kind==='jungle';
       const leaf=jungle?JUNGLE_LEAVES:LEAVES;
-      const r0=jungle?3:2;
-      for(let y=topY-2;y<=topY+1;y++){
-        const r=(y>=topY)?r0-1:r0;
+      const R=jungle?4:3;                    // rayon plus large
+      const cy=topY-1, bot=topY-4, top=topY+2; // houppier plus haut ET plus bas (tronc moins nu)
+      for(let y=bot;y<=top;y++){
+        const r=Math.max(1,Math.round(R-Math.abs(y-cy)*.72)); // enfle au centre, se resserre : forme sphérique
+        const r2=r*r;
         for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
-          if(dx===0&&dz===0&&y<=topY)continue;
-          if(Math.abs(dx)===r&&Math.abs(dz)===r&&hash2(wx+dx+y*31,wz+dz+y*17,4242)<.5)continue;
+          if(dx===0&&dz===0&&y<=topY)continue;              // laisse passer le tronc
+          const d=dx*dx+dz*dz;
+          if(d>r2+1)continue;                               // disque plein
+          if(d>=(r-.25)*(r-.25)&&hash2(wx+dx+y*31,wz+dz+y*17,4242)<.4)continue; // bord organique
           setIfAir(tx+dx,y,tz+dz,leaf);
         }
       }
       if(jungle){ // lianes qui pendent
-        for(let dx=-r0;dx<=r0;dx+=r0*2)
-          for(let y=topY-2;y>topY-2-3-Math.floor(hash2(wx,wz+dx,71)*4);y--)setIfAir(tx+dx,y,tz,JUNGLE_LEAVES);
+        for(let dx=-R;dx<=R;dx+=R*2)
+          for(let y=bot;y>bot-3-Math.floor(hash2(wx,wz+dx,71)*4);y--)setIfAir(tx+dx,y,tz,JUNGLE_LEAVES);
       }
     }
   }
