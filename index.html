@@ -447,6 +447,8 @@ const SND={
   bell:()=>blip({type:'triangle',f:660,f2:655,dur:.6,g:.08},),
   whistle:()=>blip({f:2300,f2:1800,dur:.3,g:.12}),
   baa:()=>{blip({type:'sawtooth',f:420,f2:330,dur:.28,g:.09});},
+  chop:()=>{noiseBurst({dur:.09,freq:420,g:.1});blip({type:'square',f:150,f2:80,dur:.06,g:.05});}, // coup de hache (bois)
+  tink:()=>{noiseBurst({dur:.05,freq:1700,g:.08});blip({type:'triangle',f:950,f2:640,dur:.05,g:.04});}, // coup de pioche (pierre)
 };
 /* ============================== Blocs ============================== */
 const AIR=0,GRASS=1,DIRT=2,STONE=3,SAND=4,LOG=5,LEAVES=6,PLANKS=7,GLASS=8,WATER=9,
@@ -2266,8 +2268,8 @@ function findNearbyFarm(pos,r){
 // métiers "travailleurs" : fonction de recherche de ressource + effet visuel de travail
 const WHEAT_COL=new THREE.Color(.95,.82,.3);
 const WORKER={
-  bucheron:{find:findNearbyLog,  r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,LOG,4)},
-  mineur:  {find:findNearbyStone,r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,STONE,4)},
+  bucheron:{find:findNearbyLog,  r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,LOG,4),   snd:()=>SND.chop()},
+  mineur:  {find:findNearbyStone,r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,STONE,4), snd:()=>SND.tink()},
   fermier: {find:findNearbyFarm, r:16, fx:(tx,ty,tz)=>spawnParticles(tx,ty,tz,null,8,WHEAT_COL)},
 };
 class Entity{
@@ -2325,13 +2327,15 @@ class Entity{
         else{this.state='idle';sleeping=true;}
         this.timer=1;
       }else if(this.timer<=0){this.state=this.state==='idle'?'wander':'idle';this.dir=rand(0,Math.PI*2);this.timer=rand(2,5);}
+    }else if(WORKER[this.kind]&&isNight){
+      this.state='idle';this.target=null; // repos nocturne : les travailleurs s'arrêtent
     }else if(WORKER[this.kind]){
       // IA travailleur : trouver une ressource (arbre/pierre/champ), s'en approcher, l'exploiter, recommencer
       const w=WORKER[this.kind];
       if(this.state==='chop'){
         this.chopT-=dt;this.workCd-=dt;
         if(this.target)this.facing=Math.atan2(this.target.x+.5-this.pos.x,this.target.z+.5-this.pos.z);
-        if(this.workCd<=0){w.fx(this.target.x,(this.target.y??this.pos.y+1)+.4,this.target.z);this.workCd=.42;}
+        if(this.workCd<=0){w.fx(this.target.x,(this.target.y??this.pos.y+1)+.4,this.target.z);if(d2p<15&&w.snd)w.snd();this.workCd=.42;}
         if(this.chopT<=0){this.state='idle';this.target=null;this.timer=rand(.6,1.4);}
       }else{
         if(!this.target||this.timer<=0){this.target=w.find(this.pos,w.r);this.timer=rand(3,6);}
