@@ -572,9 +572,11 @@ function drawTile(ti,fn){
 const texN=(x,y,s,sc=.22)=>fbm2(x*sc,y*sc,s,3)-.5; // bruit doux pour textures
 const jit=(x,y,s)=>hash2(x,y,s)*2-1;
 
-drawTile(0,(x,y)=>{ // herbe dessus : deux verts + brins
-  const n=texN(x,y,11,.3)*46, blade=hash2(x,y,12)<.09?26:0;
-  return[88+n*.5+blade*.6,146+n+blade,52+n*.4];
+drawTile(0,(x,y)=>{ // herbe dessus : verts multiples + touffes + brins
+  const patch=fbm2(x*.18,y*.18,10,3);            // grandes taches claires/sombres
+  const n=texN(x,y,11,.35)*30, blade=hash2(x,y,12)<.14?22:0; // brins plus nombreux
+  const base=patch>.56?[96,158,58]:(patch<.42?[70,124,44]:[84,142,52]);
+  return[base[0]+n*.5+blade*.6,base[1]+n+blade,base[2]+n*.4];
 });
 drawTile(1,(x,y)=>{ // herbe côté : terre + frange d'herbe
   const edge=5+Math.floor(hash2(x,3,14)*4);
@@ -586,30 +588,33 @@ drawTile(2,(x,y)=>{ // terre : blotches + cailloux
   const n=texN(x,y,15,.28)*36, st=hash2(x,y,17)<.05?30:0;
   return[121+n+st,85+n*.8+st,58+n*.6];
 });
-drawTile(3,(x,y)=>{ // pierre : plaques + veines
-  const n=texN(x,y,21,.16)*34, crack=(fbm2(x*.3,y*.3,22,2)>.62&&fbm2(x*.3,y*.3,22,2)<.66)?-38:0;
-  const v=127+n+crack;return[v,v,v+3];
+drawTile(3,(x,y)=>{ // pierre : plaques, veines marquées, mouchetis minéral
+  const patch=fbm2(x*.12,y*.12,20,3)*18, n=texN(x,y,21,.22)*22;
+  const cr=fbm2(x*.3,y*.3,22,2), crack=(cr>.60&&cr<.66)?-46:0;
+  const spot=hash2(x,y,23)<.05?-24:(hash2(x,y,24)<.04?20:0);
+  const v=126+n+patch+crack+spot;return[v,v,v+4];
 });
 drawTile(4,(x,y)=>{ // sable : ondulations
   const w=Math.sin((y+Math.sin(x*.4)*2)*.9)*7, n=jit(x,y,25)*8;
   return[221+w+n,208+w+n,158+w*.7+n];
 });
-drawTile(5,(x,y)=>{ // bûche côté : grain vertical + nœud
-  const g=texN(x*4,y,31,.3)*30, kd=Math.hypot(x-9,y-20);
-  const knot=kd<3?-34:(kd<4.4?-16:0);
-  return[104+g+knot,79+g*.85+knot,48+g*.6+knot];
+drawTile(5,(x,y)=>{ // bûche côté : écorce à sillons verticaux + nœud
+  const ridge=Math.sin(x*1.5+texN(x,y,30,.5)*4)*10;   // sillons verticaux d'écorce
+  const g=texN(x*3,y*.6,31,.4)*22, kd=Math.hypot(x-9,y-20);
+  const knot=kd<3?-38:(kd<4.6?-18:0);
+  return[120+ridge+g+knot,92+ridge*.85+g*.85+knot,56+ridge*.6+g*.6+knot];
 });
 drawTile(6,(x,y)=>{ // bûche dessus : cernes
   const d=Math.hypot(x-15.5,y-15.5)+texN(x,y,33,.4)*3;
   const ring=(Math.floor(d*1.15)%2===0)?24:0, edge=d>14?-30:0;
   return[138+ring+edge,106+ring*.8+edge,64+ring*.5+edge];
 });
-drawTile(7,(x,y)=>{ // feuilles : amas + trous (cutout)
-  const hole=hash2(x,y,41)<.08;
-  if(hole)return[0,0,0,0];
-  const n=fbm2(x*.35,y*.35,42,3), c=n>.56?[86,138,58]:(n<.42?[38,74,30]:[54,100,40]);
-  const j=jit(x,y,43)*10;
-  return[c[0]+j,c[1]+j,c[2]+j*.6];
+drawTile(7,(x,y)=>{ // feuilles : amas denses, reliefs lumineux, quelques trous
+  if(hash2(x,y,41)<.06)return[0,0,0,0];          // moins de trous → feuillage plus fourni
+  const n=fbm2(x*.4,y*.4,42,3), hi=fbm2(x*.9,y*.9,44,2)>.62?18:0; // éclats de lumière
+  const c=n>.58?[96,150,60]:(n<.40?[34,72,28]:[58,108,42]);
+  const j=jit(x,y,43)*9;
+  return[c[0]+j+hi,c[1]+j+hi,c[2]+j*.6+hi*.6];
 });
 drawTile(8,(x,y)=>{ // planches : 4 lames + clous
   const row=Math.floor(y/8), gap=(y%8===7)?-52:0;
