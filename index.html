@@ -2494,14 +2494,20 @@ function checkObjectives(){
 /* ============================================================
    COUCHE EMPIRE (Age of Empires) : ressources, métiers, âges, guerre
    ============================================================ */
+// Échelle des civilisations : 11 âges, chasseurs-cueilleurs → néo-futuriste.
+// Chaque âge a son INNOVATION PHARE (un bâtiment) qui, une fois bâtie, débloque le passage à l'âge suivant.
 const AGES=[
-  {nom:'Campement', mult:1,   req:null},
-  {nom:'Village',   mult:1.5, req:{builds:{maison:2},res:{bois:120}}, cine:'Les premiers foyers se rassemblent. Un village prend racine dans la vallée.'},
-  {nom:'Cité',      mult:2.2, req:{builds:{caserne:1},res:{pierre:150},ecus:200}, cine:'Les murs s’élèvent, les rues s’ordonnent. Ta cité impose sa présence.'},
-  {nom:'Royaume',   mult:3.2, req:{builds:{tour:2},res:{pierre:300},ecus:500}, cine:'Ton nom porte au-delà des collines. Voici venu le temps du royaume.'},
-  {nom:'Ère Industrielle', mult:4.5, req:{builds:{mine:2,scierie:1},res:{fer:20,pierre:400},ecus:900}, cine:'Les roues tournent, la vapeur monte. Ta vallée entre dans l’ère des machines — les barrages peuvent désormais s’élever.'},
-  {nom:'Ère Moderne',      mult:6.5, req:{builds:{barrage:1},res:{fer:40,pierre:500},ecus:1800}, cine:'Le barrage gronde, l’électricité jaillit. Câbles et lumières irriguent chaque foyer de la vallée.'},
-  {nom:'Ère Néo-Futuriste',mult:9,   req:{builds:{barrage:2},res:{fer:90},ecus:3500}, cine:'Verre, énergie et lumière : ta civilisation franchit le seuil de l’avenir.'},
+  {nom:'Chasseurs-Cueilleurs', mult:1,   req:null, cine:'Autour du premier feu, une poignée d’hommes défie la nuit. Tout commence ici.'},
+  {nom:'Néolithique',       mult:1.3, req:{builds:{foyer:1},res:{bois:80,nourriture:40}},            cine:'On sème, on récolte, on s’installe. La terre nourrit désormais ceux qui la travaillent.'},
+  {nom:'Âge du Bronze',     mult:1.7, req:{builds:{grenier:1},res:{bois:140,pierre:90}},              cine:'Le métal naît du feu. Outils et lames de bronze changent la face du monde.'},
+  {nom:'Antiquité',         mult:2.2, req:{builds:{fonderie:1},res:{pierre:200},ecus:150},            cine:'L’écriture fixe la mémoire, les cités s’organisent. Une civilisation prend forme.'},
+  {nom:'Âge Classique',     mult:2.8, req:{builds:{forum:1},res:{pierre:280},ecus:350},               cine:'Routes, aqueducs et lois : l’empire relie les vallées et fait couler l’eau jusqu’aux cités.'},
+  {nom:'Âge Féodal',        mult:3.6, req:{builds:{aqueduc:1},res:{pierre:380,bois:200},ecus:600},    cine:'Châteaux et moulins dominent la campagne. La roue et le grain font tourner le monde féodal.'},
+  {nom:'Renaissance',       mult:4.6, req:{builds:{moulin:1},res:{bois:320},ecus:1050},               cine:'L’imprimerie libère le savoir, l’art et la science s’envolent. Le monde s’ouvre.'},
+  {nom:'Âge Industriel',    mult:6,   req:{builds:{imprimerie:1},res:{fer:30,pierre:420},ecus:1650},  cine:'La vapeur rugit, les usines s’allument. L’ère des machines transforme la vallée.'},
+  {nom:'Âge Électrique',    mult:8,   req:{builds:{usine:1},res:{fer:60,pierre:520},ecus:2600},       cine:'Le barrage gronde, l’électricité jaillit. Câbles et lumières irriguent chaque foyer.'},
+  {nom:'Âge de l’Information', mult:11, req:{builds:{barrage:1},res:{fer:110},ecus:4200},             cine:'Les machines pensent et communiquent. L’information devient la ressource reine.'},
+  {nom:'Ère Néo-Futuriste', mult:15,  req:{builds:{centre:1},res:{fer:170},ecus:6500},                cine:'Verre, énergie propre et intelligence : ta civilisation franchit le seuil de l’avenir.'},
 ];
 // métiers recrutables : coût + ce qu'ils produisent par tick
 const RECRUITS={
@@ -2511,18 +2517,31 @@ const RECRUITS={
   soldat:  {nom:'Soldat',   emoji:'⚔', cost:{nourriture:30,ecus:35,fer:2},army:6,age:2,build:'caserne'},
 };
 // bâtiments : coût, effet, et plan à poser dans le monde (stamp)
+// Bâtiments : coût, effet, plan à poser (bp), âge de déblocage. Les `inno:true` sont les INNOVATIONS PHARES
+// de chaque ère : bâtir celle de ton âge débloque le passage à l'âge suivant (voir AGES[].req.builds).
 const BUILDINGS={
+  // — infrastructures de base (dès le premier âge) —
   maison: {nom:'Maison',  emoji:'🏠', cost:{bois:30},           popCap:5,  bp:'maison'},
   ferme:  {nom:'Ferme',   emoji:'🌾', cost:{bois:20},           prodBonus:{nourriture:.6}, bp:'ferme'},
   scierie:{nom:'Scierie', emoji:'🪵', cost:{bois:25,pierre:10}, prodBonus:{bois:.6}, bp:'maison'},
+  rempart:{nom:'Rempart', emoji:'🧱', cost:{pierre:20},         defense:4, bp:'rempart'},
   mine:   {nom:'Mine',    emoji:'⛰', cost:{bois:20,pierre:20}, prodBonus:{pierre:.5,ecus:.4}, bp:'maison', age:1},
   caserne:{nom:'Caserne', emoji:'🛡', cost:{bois:40,pierre:30,fer:3}, unlock:'soldat', bp:'caserne', age:1},
-  rempart:{nom:'Rempart', emoji:'🧱', cost:{pierre:20},         defense:4, bp:'rempart'},
   tour:   {nom:'Tour',    emoji:'🗼', cost:{pierre:40,bois:15,fer:5}, defense:10, bp:'tour', age:2},
-  // Barrage hydroélectrique : à poser en travers d'un ruisseau/vallon. Retient l'eau (réservoir)
-  // et produit de l'énergie -> revenu en écus (hydroélectricité). Débloqué à la Cité (palier avancé
-  // du prototype ; un vrai âge industriel viendra étendre AGES).
-  barrage:{nom:'Barrage', emoji:'🌊', cost:{pierre:80,fer:8}, prodBonus:{ecus:1.6}, bp:'barrage', age:4, hint:'Pose-le en travers d’un ruisseau ou d’un vallon'},
+  // — INNOVATIONS PHARES (une par ère ; débloque l'âge suivant) —
+  foyer:     {nom:'Foyer',            emoji:'🔥', cost:{bois:15},                 prodBonus:{nourriture:.4},        bp:'foyer',     age:0,  inno:true},
+  grenier:   {nom:'Grenier',          emoji:'🌾', cost:{bois:30,pierre:10},       prodBonus:{nourriture:.8}, popCap:4, bp:'maison',   age:1,  inno:true},
+  fonderie:  {nom:'Fonderie',         emoji:'⚒', cost:{pierre:40,bois:20},        prodBonus:{fer:.25,ecus:.3},      bp:'monument',  age:2,  inno:true},
+  forum:     {nom:'Forum',            emoji:'🏛', cost:{pierre:70},               prodBonus:{ecus:.9},              bp:'monument',  age:3,  inno:true},
+  aqueduc:   {nom:'Aqueduc',          emoji:'💧', cost:{pierre:100},              prodBonus:{nourriture:1},         bp:'monument',  age:4,  inno:true},
+  moulin:    {nom:'Moulin',           emoji:'🌀', cost:{bois:40,pierre:30},       prodBonus:{bois:.8,nourriture:.5},bp:'monument',  age:5,  inno:true},
+  imprimerie:{nom:'Imprimerie',       emoji:'📜', cost:{bois:60,pierre:40},       prodBonus:{ecus:1.4},             bp:'monument',  age:6,  inno:true},
+  usine:     {nom:'Usine à vapeur',   emoji:'🏭', cost:{pierre:80,fer:10},        prodBonus:{pierre:1.2,fer:.5,ecus:1}, bp:'usine', age:7,  inno:true},
+  // Barrage hydroélectrique : innovation de l'Âge Électrique. À poser en travers d'un ruisseau/vallon
+  // (retient l'eau -> réservoir + hydroélectricité). L'électricité peut prendre d'autres formes plus tard.
+  barrage:   {nom:'Barrage',          emoji:'🌊', cost:{pierre:80,fer:8},         prodBonus:{ecus:1.8},             bp:'barrage',   age:8,  inno:true, hint:'Pose-le en travers d’un ruisseau ou d’un vallon'},
+  centre:    {nom:'Centre de calcul', emoji:'🖥', cost:{pierre:100,fer:20},       prodBonus:{ecus:2.5,fer:.6},      bp:'arcologie', age:9,  inno:true},
+  arcologie: {nom:'Arcologie',        emoji:'🌇', cost:{pierre:120,fer:40,ecus:500}, prodBonus:{ecus:4,fer:1},      bp:'arcologie', age:10, inno:true},
 };
 const EMP=()=>player.emp;
 const ageMult=()=>AGES[player.emp.age].mult;
@@ -2613,7 +2632,7 @@ function buildStructure(key,skipStamp){
   return true;
 }
 function empProductionPerTick(){
-  const e=player.emp,m=ageMult(),out={bois:0,nourriture:0,pierre:0,ecus:0};
+  const e=player.emp,m=ageMult(),out={bois:0,nourriture:0,pierre:0,ecus:0,fer:0};
   for(const key in RECRUITS){
     const r=RECRUITS[key];
     if(!r.prod)continue;
@@ -2639,6 +2658,7 @@ function empTick(dt){
     e.res.pierre=Math.max(0,e.res.pierre+out.pierre);
     e.res.nourriture=Math.max(0,e.res.nourriture+out.nourriture);
     if(out.ecus)player.ecus=Math.max(0,player.ecus+out.ecus);
+    if(out.fer)e.res.fer=Math.max(0,(e.res.fer||0)+out.fer); // métallurgie/industrie produit du fer
     updateCityHud();
     if(!state.paused)checkObjectives();
     savePlayer();
@@ -2788,7 +2808,36 @@ function stampBarrage(x,gy,z){
   }
   toast('🌊 Barrage édifié — réservoir rempli, l’hydroélectricité enrichit ta cité');
 }
-const STAMPS={maison:stampMaison,ferme:stampFerme,rempart:stampRempart,tour:stampTour,caserne:stampCaserne,barrage:stampBarrage};
+function stampFoyer(x,gy,z){ // feu de camp (innovation du Paléolithique)
+  for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]])setBlock(x+dx,gy,z+dz,COBBLE); // cercle de pierres
+  setBlock(x,gy,z,LOG);setBlock(x,gy+1,z,TORCH);                               // bûche + flamme
+}
+function stampMonument(x,gy,z){ // obélisque de pierre (innovations antiques/médiévales)
+  fillB(x-1,x+1,gy,gy+1,z-1,z+1,COBBLE);          // socle 3×3
+  for(let y=gy+2;y<=gy+6;y++)setBlock(x,y,z,COBBLE); // fût
+  setBlock(x,gy+7,z,GLASS);setBlock(x,gy+8,z,TORCH); // sommet lumineux
+}
+function stampUsine(x,gy,z){ // usine à vapeur + cheminée fumante (Âge Industriel)
+  fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);
+  fillB(x-2,x+2,gy+1,gy+4,z-2,z+2,AIR);
+  for(let y=gy+1;y<=gy+3;y++){
+    fillB(x-2,x+2,y,y,z-2,z-2,COBBLE);fillB(x-2,x+2,y,y,z+2,z+2,COBBLE);
+    fillB(x-2,x-2,y,y,z-2,z+2,COBBLE);fillB(x+2,x+2,y,y,z-2,z+2,COBBLE);
+  }
+  fillB(x-2,x+2,gy+4,gy+4,z-2,z+2,PLANKS);        // toit plat industriel
+  setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
+  setBlock(x-2,gy+2,z,GLASS);setBlock(x+2,gy+2,z,GLASS);
+  for(let y=gy+3;y<=gy+9;y++)setBlock(x+1,y,z-1,COBBLE); // cheminée
+}
+function stampArcologie(x,gy,z){ // tour de verre (informatique / néo-futuriste)
+  fillB(x-1,x+1,gy,gy,z-1,z+1,COBBLE);
+  for(let y=gy+1;y<=gy+9;y++){ fillB(x-1,x+1,y,y,z-1,z+1,GLASS); setBlock(x,y,z,AIR); }
+  for(const[cx,cz]of[[x-1,z-1],[x+1,z-1],[x-1,z+1],[x+1,z+1]])for(let y=gy+1;y<=gy+9;y++)setBlock(cx,y,cz,COBBLE); // piliers
+  fillB(x-1,x+1,gy+10,gy+10,z-1,z+1,GLASS);setBlock(x,gy+11,z,TORCH); // toit + fanal
+  setBlock(x,gy+1,z+1,AIR);                        // entrée
+}
+const STAMPS={maison:stampMaison,ferme:stampFerme,rempart:stampRempart,tour:stampTour,caserne:stampCaserne,barrage:stampBarrage,
+  foyer:stampFoyer,monument:stampMonument,usine:stampUsine,arcologie:stampArcologie};
 let pendingBuild=null; // clé de bâtiment en attente de pose
 function armBuild(key){
   const b=BUILDINGS[key];
