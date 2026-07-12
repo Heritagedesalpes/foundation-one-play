@@ -699,6 +699,38 @@ for(const id of CROSS_BLOCKS){SHAPE[id]='cross';TRANSPARENT.add(id);}
 TRANSPARENT.add(BIRCH_LEAVES);TRANSPARENT.add(ACACIA_LEAVES);TRANSPARENT.add(WILLOW_LEAVES);
 WOODY.add(BIRCH_LOG);WOODY.add(BAMBOO);WOODY.add(MUSH_STEM);WOODY.add(CACTUS_FLOWER);
 const FOOD={[BAIES]:3,[CHAMPIGNON_BRUN]:2,[CHAMPIGNON_ROUGE]:2,[RAGOUT]:7};
+/* ===== VILLAGES & VILLES (agent E) : sols de route + habitat par biome (blocs 150-169, tuiles 80-91) ===== */
+const PATH_GRAVEL=150, PATH_DIRT=151, ROAD_PAVES=152,
+      GRAVEL_SLAB=153, PAVES_SLAB=154,
+      ADOBE=155, ADOBE_SLAB=156, DRIFTWOOD=157,
+      THATCH=158, THATCH_SLAB=159,
+      THATCH_STAIR_PX=160, THATCH_STAIR_NX=161, THATCH_STAIR_PZ=162, THATCH_STAIR_NZ=163;
+const T_GRAVEL=80,T_PATHDIRT=81,T_PAVES=82,T_ADOBE=83,T_DRIFT=84,T_THATCH=85;
+for(const[id,tile,name,hard] of [
+  [PATH_GRAVEL,T_GRAVEL,'Chemin de gravier',.6],
+  [PATH_DIRT,T_PATHDIRT,'Terre battue',.5],
+  [ROAD_PAVES,T_PAVES,'Pavés de route',1.5],
+  [ADOBE,T_ADOBE,'Adobe',1.0],
+  [DRIFTWOOD,T_DRIFT,'Bois flotté',.8],
+  [THATCH,T_THATCH,'Chaume',.4],
+]){ TILES[id]=[tile,tile,tile]; NAMES[id]=name; HARDNESS[id]=hard; DROPS[id]=id; PLACE_ORDER.push(id); }
+for(const[id,tile,name,hard] of [
+  [GRAVEL_SLAB,T_GRAVEL,'Dalle de gravier',.6],
+  [PAVES_SLAB,T_PAVES,'Dalle de pavés',1.5],
+  [ADOBE_SLAB,T_ADOBE,'Dalle d’adobe',1.0],
+  [THATCH_SLAB,T_THATCH,'Dalle de chaume',.4],
+]){ SHAPE[id]='slab'; TILES[id]=[tile,tile,tile]; NAMES[id]=name; HARDNESS[id]=hard; TRANSPARENT.add(id); DROPS[id]=id; PLACE_ORDER.push(id); }
+SLAB_OF['thatch']=THATCH_SLAB; SLAB_OF['adobe']=ADOBE_SLAB;
+STAIR_ORIENT['thatch']={};
+[[THATCH_STAIR_PX,'px'],[THATCH_STAIR_NX,'nx'],[THATCH_STAIR_PZ,'pz'],[THATCH_STAIR_NZ,'nz']].forEach(([id,d])=>{
+  STAIR[id]={mat:'thatch',dir:d}; SHAPE[id]='stair'; TILES[id]=[T_THATCH,T_THATCH,T_THATCH];
+  NAMES[id]='Escalier de chaume'; HARDNESS[id]=.4; TRANSPARENT.add(id); DROPS[id]=THATCH_STAIR_PX; STAIR_ORIENT['thatch'][d]=id;
+});
+STAIR_ITEM['thatch']=THATCH_STAIR_PX; PLACE_ORDER.push(THATCH_STAIR_PX);
+SOFT.add(PATH_GRAVEL); SOFT.add(PATH_DIRT); SOFT.add(GRAVEL_SLAB);
+STONY.add(ROAD_PAVES); STONY.add(PAVES_SLAB); STONY.add(ADOBE); STONY.add(ADOBE_SLAB);
+WOODY.add(DRIFTWOOD); WOODY.add(THATCH); WOODY.add(THATCH_SLAB);
+WOODY.add(THATCH_STAIR_PX); WOODY.add(THATCH_STAIR_NX); WOODY.add(THATCH_STAIR_PZ); WOODY.add(THATCH_STAIR_NZ);
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -1219,6 +1251,42 @@ drawTile(73,(x,y)=>{ // fleur de cactus (rose/jaune)
   if(d<7&&(Math.abs(Math.atan2(y-14,x-16))*4)%2<1.3)return[232,96,150];
   return[0,0,0,0];
 });
+/* ===== VILLAGES — tuiles 80-85 (routes + habitat) ===== */
+drawTile(80,(x,y)=>{ // gravier tassé : galets gris sur liant terreux
+  let v=[96,90,80];
+  for(let i=0;i<11;i++){
+    const sx=hash2(i,1,802)*TS,sy=hash2(i,2,802)*TS,rr=1.8+hash2(i,3,802)*2.4;
+    const d=Math.hypot(x-sx,y-sy);
+    if(d<rr){const g=136+hash2(i,4,802)*74+(d<rr-1?16:-12);v=[g,g,g+4];}
+  }
+  const n=jit(x,y,803)*8; return[v[0]+n,v[1]+n,v[2]+n];
+});
+drawTile(81,(x,y)=>{ // terre battue : brun compact + ornières + cailloux
+  const n=texN(x,y,811,.3)*26, rut=(y%9<1.4)?-16:0, st=hash2(x,y,812)<.04?26:0;
+  return[120+n+rut+st,92+n*.8+rut+st,62+n*.6+rut];
+});
+drawTile(82,(x,y)=>{ // pavés de route : galets réguliers jointoyés, gris chaud
+  const off=(Math.floor(y/8)%2)*4;
+  const cx=Math.floor((x+off)/8)*8+4-off, cy=Math.floor(y/8)*8+4;
+  const d=Math.hypot(x-cx,y-cy), grout=d>3.4?-42:0, dome=Math.max(0,3.4-d)*4, n=jit(x,y,821)*7;
+  const v=126+n+grout+dome; return[v+4,v,v-4];
+});
+drawTile(83,(x,y)=>{ // adobe : enduit ocre + brins de paille + briques crues
+  const n=texN(x,y,831,.28)*20;
+  const seam=((y%10<1)||((x+(Math.floor(y/10)%2)*8)%16<1))?-14:0;
+  if(hash2(x,y,832)<.05)return[178,150,72];
+  return[196+n+seam,156+n*.9+seam,104+n*.7+seam];
+});
+drawTile(84,(x,y)=>{ // bois flotté : lames gris-bleu délavées + fentes
+  const row=Math.floor(y/8), gap=(y%8===7)?-30:0, off=row%2?4:0, seam=((x+off)%16===15)?-24:0;
+  const g=texN(x*3,y*.5,841,.4)*14, crack=hash2(x,y,842)<.03?-26:0;
+  const v=150+g+gap+seam+crack; return[v-6,v,v+10];
+});
+drawTile(85,(x,y)=>{ // chaume : bottes de paille dorée, bandes horizontales
+  const band=Math.floor(y/6), edge=(y%6<1)?-30:0, flow=Math.sin((x+band*3)*.6)*6;
+  const strand=hash2(x*2+band*7,y,851)<.2?18:0, n=jit(x,y,852)*8;
+  return[190+flow+edge+strand+n,158+flow+edge+strand+n*.8,74+edge+n*.4];
+});
 
 // texture d'eau séparée (défilement animé)
 const waterCv=document.createElement('canvas');
@@ -1557,7 +1625,7 @@ function villageAt(cellX,cellZ){
   const h=terrainHeight(ox,oz);
   if(h<=SEA+2||h>=SNOWLINE-10)return null;
   const bi=biomeAt(ox,oz);
-  if(bi!==B_PLAINS&&bi!==B_FOREST)return null;   // terrain constructible tempéré
+  if(bi!==B_PLAINS&&bi!==B_FOREST&&bi!==B_DESERT&&bi!==B_SAVANE)return null; // plaines/forêt/désert/savane
   let mn=h,mx=h;                                  // large zone à basse pente
   for(let dx=-14;dx<=14;dx+=7)for(let dz=-14;dz<=14;dz+=7){
     const hh=terrainHeight(ox+dx,oz+dz);if(hh<mn)mn=hh;if(hh>mx)mx=hh;
@@ -1621,6 +1689,148 @@ function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondati
   setW(cpx,hy+1,cpz,AIR);
   setW(hx+wx-1,hy+1,hz-wz+1,TORCH);                // torche intérieure
   if(withBench)setW(hx-wx+1,hy+1,hz+wz-1,ETABLI);  // une maison = atelier
+}
+/* ===== VILLAGES & VILLES : habitat par biome + mobilier de hameau + villes ===== */
+const citiesList=[]; // villes découvertes (pour peuplement)
+const VSTYLE_MAT={
+  plaine:{wall:PLANKS,        post:LOG,  roof:'thatch', fill:PLANKS,        path:PATH_GRAVEL, found:STONE_BRICKS, flat:false},
+  foret: {wall:SPRUCE_PLANKS, post:LOG,  roof:'thatch', fill:SPRUCE_PLANKS, path:PATH_DIRT,   found:STONE_BRICKS, flat:false},
+  savane:{wall:ADOBE,         post:LOG,  roof:'thatch', fill:ADOBE,         path:PATH_DIRT,   found:ADOBE,        flat:false},
+  desert:{wall:ADOBE,         post:ADOBE,roof:'flat',   fill:ADOBE,         path:SAND,        found:ADOBE,        flat:true },
+  cotier:{wall:DRIFTWOOD,     post:LOG,  roof:'thatch', fill:DRIFTWOOD,     path:PATH_GRAVEL, found:STONE_BRICKS, flat:false},
+};
+function villageStyle(v){
+  const bi=biomeAt(v.ox,v.oz);
+  if(bi===B_DESERT)return 'desert';
+  if(bi===10)return 'savane';
+  if(v.h<=SEA+6)return 'cotier';
+  if(bi===B_FOREST)return 'foret';
+  return 'plaine';
+}
+function stampHouseVariant(setW,hx,hz,hy,style,withBench){
+  const M=VSTYLE_MAT[style]||VSTYLE_MAT.plaine;
+  const wx=2+(hash2(hx,hz,3301)<.45?1:0), wz=2, wt=hy+3;
+  const ridge=wt+1+(M.flat?0:(wz+1));
+  for(let x=hx-wx;x<=hx+wx;x++)for(let z=hz-wz;z<=hz+wz;z++){
+    for(let y=hy+1;y<=ridge+3;y++)setW(x,y,z,AIR);
+    setW(x,hy,z,M.found);
+  }
+  for(let y=hy+1;y<=wt;y++){
+    for(let x=hx-wx;x<=hx+wx;x++){setW(x,y,hz-wz,M.wall);setW(x,y,hz+wz,M.wall);}
+    for(let z=hz-wz;z<=hz+wz;z++){setW(hx-wx,y,z,M.wall);setW(hx+wx,y,z,M.wall);}
+  }
+  for(const[px,pz]of[[hx-wx,hz-wz],[hx+wx,hz-wz],[hx-wx,hz+wz],[hx+wx,hz+wz]])
+    for(let y=hy+1;y<=wt;y++)setW(px,y,pz,M.post);
+  setW(hx,hy+1,hz+wz,AIR);setW(hx,hy+2,hz+wz,AIR);
+  setW(hx,hy+2,hz-wz,GLASS);setW(hx-wx,hy+2,hz,GLASS);setW(hx+wx,hy+2,hz,GLASS);
+  if(M.flat){                                                        // TOIT-TERRASSE (désert)
+    for(let x=hx-wx;x<=hx+wx;x++)for(let z=hz-wz;z<=hz+wz;z++)setW(x,wt+1,z,M.wall);
+    for(let x=hx-wx;x<=hx+wx;x++){setW(x,wt+2,hz-wz,ADOBE_SLAB);setW(x,wt+2,hz+wz,ADOBE_SLAB);}
+    for(let z=hz-wz;z<=hz+wz;z++){setW(hx-wx,wt+2,z,ADOBE_SLAB);setW(hx+wx,wt+2,z,ADOBE_SLAB);}
+    setW(hx-wx+1,wt+1,hz-wz+1,TORCH);
+  }else{                                                             // TOIT À DEUX PENTES (chaume) + cheminée
+    const S=STAIR_ORIENT[M.roof]||STAIR_ORIENT.planks, slab=SLAB_OF[M.roof]??PLANK_SLAB;
+    for(let z=hz-wz;z<=hz+wz;z++){
+      const dz=Math.abs(z-hz),yTop=wt+1+(wz-dz);
+      for(let x=hx-wx-1;x<=hx+wx+1;x++)setW(x,yTop,z, z<hz?S.pz:(z>hz?S.nz:slab));
+      for(let y=wt+1;y<yTop;y++){setW(hx-wx,y,z,M.fill);setW(hx+wx,y,z,M.fill);}
+    }
+    const cpx=hx-wx+1,cpz=hz-wz+1;
+    for(let y=hy+1;y<=ridge+2;y++)setW(cpx,y,cpz,COBBLE);
+    setW(cpx,hy+1,cpz,AIR);
+    setW(hx+wx-1,hy+1,hz-wz+1,TORCH);
+  }
+  if(withBench)setW(hx-wx+1,hy+1,hz+wz-1,ETABLI);
+}
+function stampWell(setW,ox,oz,oy){
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){
+    if(dx===0&&dz===0){setW(ox,oy,oz,WATER);continue;}
+    setW(ox+dx,oy,oz+dz,COBBLE); setW(ox+dx,oy+1,oz+dz,COBBLE);
+  }
+  for(const[dx,dz]of[[-1,-1],[1,-1],[-1,1],[1,1]])for(let y=oy+2;y<=oy+3;y++)setW(ox+dx,y,oz+dz,LOG);
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)setW(ox+dx,oy+4,oz+dz,PLANK_SLAB);
+}
+function stampLamp(setW,ox,oz,oy){ for(let y=oy+1;y<=oy+3;y++)setW(ox,y,oz,LOG); setW(ox,oy+4,oz,TORCH); }
+function stampStall(setW,ox,oz,oy,awn){
+  for(const[dx,dz]of[[-1,-1],[1,-1],[-1,1],[1,1]]){setW(ox+dx,oy+1,oz+dz,LOG);setW(ox+dx,oy+2,oz+dz,LOG);}
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){if(dx||dz)setW(ox+dx,oy+1,oz+dz,PLANK_SLAB);setW(ox+dx,oy+3,oz+dz,awn);}
+  setW(ox,oy+1,oz,AIR);
+}
+function stampGarden(setW,ox,oz){
+  const oy=terrainHeight(ox,oz);
+  for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){
+    const px=ox+dx,pz=oz+dz,ph=terrainHeight(px,pz); if(Math.abs(ph-oy)>1)continue;
+    if(Math.abs(dx)===2||Math.abs(dz)===2){ if(!(dx===0&&dz===2))setW(px,ph+1,pz,LOG); }
+    else setW(px,ph,pz,FARMLAND);
+  }
+}
+function stampWoodpile(setW,ox,oz){ const oy=terrainHeight(ox,oz); for(let dx=0;dx<2;dx++)for(let dz=0;dz<2;dz++)for(let y=oy+1;y<=oy+1+(dx?1:0);y++)setW(ox+dx,y,oz+dz,LOG); }
+function stampHaypile(setW,ox,oz){ const oy=terrainHeight(ox,oz); setW(ox,oy+1,oz,WOOL_YELLOW);setW(ox+1,oy+1,oz,WOOL_YELLOW);setW(ox,oy+1,oz+1,WOOL_YELLOW);setW(ox,oy+2,oz,WOOL_YELLOW); }
+function cityAt(cellX,cellZ){
+  if(hash2(cellX,cellZ,9101)>=.35)return null;
+  const ox=cellX*512+120+Math.floor(hash2(cellX,cellZ,9102)*272);
+  const oz=cellZ*512+120+Math.floor(hash2(cellX,cellZ,9103)*272);
+  const h=terrainHeight(ox,oz);
+  if(h<=SEA+2||h>=SNOWLINE-16)return null;
+  const bi=biomeAt(ox,oz);
+  if(bi!==B_PLAINS&&bi!==B_FOREST&&bi!==10)return null;
+  let mn=h,mx=h;
+  for(let dx=-20;dx<=20;dx+=10)for(let dz=-20;dz<=20;dz+=10){const hh=terrainHeight(ox+dx,oz+dz);if(hh<mn)mn=hh;if(hh>mx)mx=hh;}
+  if(mx-mn>4)return null;
+  return{ox,oz,h,R:18};
+}
+function stampTowerW(setW,x,gy,z){
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)for(let y=gy;y<=gy+8;y++)setW(x+dx,y,z+dz,STONE_BRICKS);
+  for(let y=gy+1;y<=gy+7;y++)setW(x,y,z,AIR);
+  for(let i=-1;i<=1;i++){setW(x+i,gy+9,z-1,STONE_BRICKS);setW(x+i,gy+9,z+1,STONE_BRICKS);setW(x-1,gy+9,z+i,STONE_BRICKS);setW(x+1,gy+9,z+i,STONE_BRICKS);}
+  setW(x,gy+9,z,TORCH);
+}
+function stampMonumentW(setW,x,gy,z){
+  for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)setW(x+dx,gy,z+dz,STONE_BRICKS);
+  for(let y=gy+1;y<=gy+6;y++)setW(x,y,z,SANDSTONE);
+  setW(x,gy+7,z,GLASS);setW(x,gy+8,z,TORCH);
+}
+function stampCity(setW,ct){
+  const{ox,oz,h,R}=ct;
+  const bi=biomeAt(ox,oz), style=(bi===10)?'savane':(bi===B_FOREST?'foret':'plaine');
+  const awn=[WOOL_RED,WOOL_BLUE,WOOL_YELLOW,WOOL_GREEN];
+  for(let x=ox-R;x<=ox+R;x++)for(let z=oz-R;z<=oz+R;z++){
+    const hh=terrainHeight(x,z);
+    for(let y=h+1;y<=hh;y++)setW(x,y,z,AIR);
+    for(let y=hh;y<=h-1;y++)setW(x,y,z,DIRT);
+    setW(x,h,z,GRASS);
+  }
+  for(let i=-R;i<=R;i++)for(const[bx,bz]of[[ox+i,oz-R],[ox+i,oz+R],[ox-R,oz+i],[ox+R,oz+i]]){
+    if(Math.abs(i)<=1)continue;
+    for(let y=h+1;y<=h+4;y++)setW(bx,y,bz,STONE_BRICKS);
+    if((i&1)===0)setW(bx,h+5,bz,STONE_BRICKS);
+  }
+  for(const[dx,dz]of[[-R,-R],[R,-R],[-R,R],[R,R]])stampTowerW(setW,ox+dx,h+1,oz+dz);
+  for(let i=-R;i<=R;i++)for(let w=-1;w<=1;w++){setW(ox+i,h,oz+w,ROAD_PAVES);setW(ox+w,h,oz+i,ROAD_PAVES);}
+  for(let dx=-3;dx<=3;dx++)for(let dz=-3;dz<=3;dz++)setW(ox+dx,h,oz+dz,ROAD_PAVES);
+  stampMonumentW(setW,ox,h+1,oz);
+  for(let gx=-R+4;gx<=R-4;gx+=7)for(let gz=-R+4;gz<=R-4;gz+=7){
+    if(Math.abs(gx)<=3||Math.abs(gz)<=3)continue;
+    const hx=ox+gx,hz=oz+gz, r=hash2(hx,hz,9130);
+    if(r<.12)continue;
+    stampHouseVariant(setW,hx,hz,h,style, r<.2);
+  }
+  for(const[qx,qz]of[[-1,-1],[1,-1],[-1,1],[1,1]])stampWell(setW,ox+qx*8,oz+qz*8,h);
+  for(let i=-R+3;i<=R-3;i+=6){stampLamp(setW,ox+i,oz+2,h);stampLamp(setW,ox+2,oz+i,h);}
+  for(let i=0;i<3;i++){const a=hash2(ox+i*7,oz+i*5,9131)*Math.PI*2;stampStall(setW,ox+Math.round(Math.cos(a)*5),oz+Math.round(Math.sin(a)*5),h,awn[i%awn.length]);}
+}
+function nearbyCityCenter(x,z,maxD){
+  const cell=512,cx=Math.floor(x/cell),cz=Math.floor(z/cell);
+  let best=null,bd=maxD*maxD;
+  for(let dcx=-1;dcx<=1;dcx++)for(let dcz=-1;dcz<=1;dcz++){const c=cityAt(cx+dcx,cz+dcz);if(c){const d=(c.ox-x)**2+(c.oz-z)**2;if(d<bd){bd=d;best=c;}}}
+  return best;
+}
+function cityCovers(x,z){
+  const cell=512,cx=Math.floor(x/cell),cz=Math.floor(z/cell);
+  for(let dcx=-1;dcx<=1;dcx++)for(let dcz=-1;dcz<=1;dcz++){
+    const c=cityAt(cx+dcx,cz+dcz); if(c&&Math.abs(c.ox-x)<=c.R+6&&Math.abs(c.oz-z)<=c.R+6)return true;
+  }
+  return false;
 }
 /* ---- Lacs d'altitude : bassins de montagne remplis d'eau (au-dessus du niveau mer) ---- */
 function lakeAt(cellX,cellZ){
@@ -2017,31 +2227,64 @@ function generateChunkData(cx,cz){
       }
     }
   }
-  // villages : hameaux de plusieurs maisons (Plaines/Forêt), reliées par des sentiers
+  // villages : hameaux enrichis (place pavée, puits, routes par biome, lampadaires, étals, jardins)
   {
-    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=28;   // marge élargie : couvre les champs en périphérie
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=30;
     const cX0=Math.floor((wx0-M)/160),cX1=Math.floor((wx0+CHUNK-1+M)/160);
     const cZ0=Math.floor((wz0-M)/160),cZ1=Math.floor((wz0+CHUNK-1+M)/160);
     for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
       const v=villageAt(ccx,ccz);if(!v)continue;
-      const setW=(wx,y,wz,t)=>{const lx=wx-wx0,lz=wz-wz0;if(lx<0||lx>=CHUNK||lz<0||lz>=CHUNK||y<1||y>=HEIGHT)return;b[lidx(lx,y,lz)]=t;const k=wx+','+y+','+wz;if(t===TORCH)torches.add(k);if(t===ETABLI)etablis.add(k);};
-      const houses=villageHouses(v);
-      for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)setW(v.ox+dx,v.h,v.oz+dz,COBBLE); // puits/place
+      if(cityCovers(v.ox,v.oz))continue;    // pas de hameau sous l'emprise d'une ville
+      const setW=(wx,y,wz,t)=>{const lx=wx-wx0,lz=wz-wz0;if(lx<0||lx>=CHUNK||lz<0||lz>=CHUNK||y<1||y>=HEIGHT)return;b[lidx(lx,y,lz)]=t;const k=wx+','+y+','+wz;if(t===TORCH)torches.add(k);if(t===ETABLI)etablis.add(k);if(t===FOUR)fours.add(k);};
+      const style=villageStyle(v), PM=VSTYLE_MAT[style]||VSTYLE_MAT.plaine, houses=villageHouses(v);
+      // 1) place centrale pavée (5×5) + puits
+      for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++){
+        const px=v.ox+dx,pz=v.oz+dz,ph=terrainHeight(px,pz);
+        if(Math.abs(ph-v.h)<=1)setW(px,ph,pz,ROAD_PAVES);
+      }
+      stampWell(setW,v.ox,v.oz,terrainHeight(v.ox,v.oz));
+      // 2) routes rayonnantes vers chaque maison (matériau = biome) + lampadaires + annexes
       houses.forEach((ho,hi)=>{
         const steps=Math.max(1,Math.max(Math.abs(ho.hx-v.ox),Math.abs(ho.hz-v.oz)));
-        for(let s=0;s<=steps;s++){                 // sentier de terre battue vers le centre
+        for(let s=0;s<=steps;s++){
           const px=Math.round(v.ox+(ho.hx-v.ox)*s/steps),pz=Math.round(v.oz+(ho.hz-v.oz)*s/steps);
-          setW(px,terrainHeight(px,pz),pz,DIRT);
+          setW(px,terrainHeight(px,pz),pz,PM.path);
+          if(s>0&&s<steps&&s%4===0)stampLamp(setW,px+1,pz,terrainHeight(px+1,pz));
         }
-        stampHouse(setW,ho.hx,ho.hz,ho.hy,hi===0); // 1re maison = atelier (établi)
+        stampHouseVariant(setW,ho.hx,ho.hz,ho.hy,style,hi===0);
+        const r=hash2(ho.hx,ho.hz,9410);
+        if(r<.4)stampGarden(setW,ho.hx+3,ho.hz+3);
+        else if(r<.7)stampWoodpile(setW,ho.hx-3,ho.hz+2);
+        else stampHaypile(setW,ho.hx+3,ho.hz-3);
       });
-      for(const fld of villageFields(v)){           // champs de blé cultivés (terre labourée plate)
+      // 3) étals de marché au bord de la place (auvents colorés)
+      const awn=[WOOL_RED,WOOL_BLUE,WOOL_YELLOW,WOOL_GREEN];
+      for(let i=0,ns=2+(hash2(v.ox,v.oz,9420)<.5?1:0);i<ns;i++){
+        const a=hash2(v.ox+i*7,v.oz+i*5,9421)*Math.PI*2;
+        const sx=v.ox+Math.round(Math.cos(a)*4),sz=v.oz+Math.round(Math.sin(a)*4);
+        stampStall(setW,sx,sz,terrainHeight(sx,sz),awn[i%awn.length]);
+      }
+      // 4) champs cultivés
+      for(const fld of villageFields(v)){
         for(let dx=-fld.rx;dx<=fld.rx;dx++)for(let dz=-fld.rz;dz<=fld.rz;dz++){
           const px=fld.fx+dx,pz=fld.fz+dz,ph=terrainHeight(px,pz);
-          if(Math.abs(ph-fld.fh)>1)continue;        // reste plat, pas de blé en pente
+          if(Math.abs(ph-fld.fh)>1)continue;
           setW(px,ph,pz,FARMLAND);
         }
       }
+    }
+  }
+  // villes : grandes agglomérations fortifiées (rares, grille 512, terrassées à plat)
+  {
+    const wx0=cx*CHUNK,wz0=cz*CHUNK,M=24;
+    const cX0=Math.floor((wx0-M)/512),cX1=Math.floor((wx0+CHUNK-1+M)/512);
+    const cZ0=Math.floor((wz0-M)/512),cZ1=Math.floor((wz0+CHUNK-1+M)/512);
+    for(let ccx=cX0;ccx<=cX1;ccx++)for(let ccz=cZ0;ccz<=cZ1;ccz++){
+      const ct=cityAt(ccx,ccz);if(!ct)continue;
+      const setW=(wx,y,wz,t)=>{const lx=wx-wx0,lz=wz-wz0;if(lx<0||lx>=CHUNK||lz<0||lz>=CHUNK||y<1||y>=HEIGHT)return;b[lidx(lx,y,lz)]=t;const k=wx+','+y+','+wz;if(t===TORCH)torches.add(k);if(t===ETABLI)etablis.add(k);if(t===FOUR)fours.add(k);};
+      stampCity(setW,ct);
+      if(ct.ox>=wx0&&ct.ox<wx0+CHUNK&&ct.oz>=wz0&&ct.oz<wz0+CHUNK&&!citiesList.some(c=>c.x===ct.ox&&c.z===ct.oz))
+        citiesList.push({x:ct.ox,y:ct.h+1,z:ct.oz});
     }
   }
   const x0=cx*CHUNK,z0=cz*CHUNK;
@@ -4126,6 +4369,20 @@ RECIPES.push({out:[TEINTURE_NOIRE,2],ins:[[ITEM_COAL,1]],station:'etabli'});   /
 RECIPES.push({out:[RAGOUT,1],ins:[[CHAMPIGNON_ROUGE,1],[CHAMPIGNON_BRUN,1]],station:'four'}); // ragoût = soin
 RECIPES.push({out:[WOOL_IDS[10],1],ins:[[WOOL_IDS[0],1],[TEINTURE_ROUGE,1],[TEINTURE_BLEUE,1]],station:'etabli'}); // violette
 RECIPES.push({out:[WOOL_IDS[9],1], ins:[[WOOL_IDS[0],1],[TEINTURE_VERTE,1],[TEINTURE_BLEUE,1]],station:'etabli'}); // cyan
+/* ===== VILLAGES : routes & habitat craftables ===== */
+RECIPES.push(
+  {out:[PATH_GRAVEL,4],ins:[[COBBLE,1],[DIRT,1]],station:'etabli'},
+  {out:[PATH_DIRT,4],ins:[[DIRT,2]],station:'etabli'},
+  {out:[ROAD_PAVES,4],ins:[[COBBLE,4]],station:'etabli'},
+  {out:[ADOBE,4],ins:[[SAND,2],[DIRT,2]],station:'etabli'},
+  {out:[DRIFTWOOD,4],ins:[[LOG,1]],station:'etabli'},
+  {out:[THATCH,4],ins:[[LEAVES,3]],station:'etabli'},
+  {out:[GRAVEL_SLAB,6],ins:[[PATH_GRAVEL,3]],station:'etabli'},
+  {out:[PAVES_SLAB,6],ins:[[ROAD_PAVES,3]],station:'etabli'},
+  {out:[ADOBE_SLAB,6],ins:[[ADOBE,3]],station:'etabli'},
+  {out:[THATCH_SLAB,6],ins:[[THATCH,3]],station:'etabli'},
+  {out:[THATCH_STAIR_PX,4],ins:[[THATCH,6]],station:'etabli'},
+);
 const insOK=r=>r.ins.every(([id,n])=>(player.inv[id]||0)>=n);
 function stationOK(r){
   if(!r.station||!survival())return true;
@@ -4974,6 +5231,9 @@ window.__debug={
   findLake:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const l=lakeAt(cx,cz);if(l)return{cx,cz,...l};}return null;},
   findStream:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const p=streamPath(cx,cz);if(p&&p.length>3)return{cx,cz,len:p.length,src:p[0],mid:p[(p.length/2)|0],end:p[p.length-1]};}return null;},
   findChalet:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const c=chaletAt(cx,cz);if(c)return{cx,cz,...c};}return null;},
+  findVille:()=>{for(let r=1;r<40;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const v=villageAt(cx,cz);if(v)return{cx,cz,style:villageStyle(v),...v};}return null;},
+  findCity:()=>{for(let r=1;r<80;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const c=cityAt(cx,cz);if(c)return{cx,cz,...c};}return null;},
+  cities:()=>citiesList.slice(0,12),
   build:(kind,x,gy,z)=>{const p=player.pos;x=x??Math.round(p.x);gy=gy??Math.floor(p.y)-1;z=z??Math.round(p.z);(STAMPS[kind]||stampMaison)(x,gy,z);return{kind:kind||'maison',x,gy,z};},
   spawnBucheron:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('bucheron',x+.5,h+1,z+.5);entities.push(e);return{x,z,tree:findNearbyLog({x:x+.5,z:z+.5},12)};},
   spawnMineur:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('mineur',x+.5,h+1,z+.5);entities.push(e);return{x,z,rock:findNearbyStone({x:x+.5,z:z+.5},12)};},
