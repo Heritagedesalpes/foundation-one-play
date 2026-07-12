@@ -21,6 +21,8 @@
   html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:'Rubik',sans-serif;user-select:none;color:var(--text);}
   canvas{display:block;}
   button{font-family:inherit;}
+  /* en jeu actif (sans pointer lock, ex. app WKWebView) : on masque le curseur système, seule la croix reste */
+  body.nocursor,body.nocursor canvas,body.nocursor *{cursor:none!important;}
 
   /* ---------- HUD ---------- */
   #crosshair{position:fixed;left:50%;top:50%;width:22px;height:22px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;filter:drop-shadow(0 0 1px rgba(0,0,0,.9));} /* halo sombre : réticule blanc visible sur tout fond (fini l'invisibilité sur la roche grise via mix-blend) */
@@ -2287,11 +2289,13 @@ function openDialog(e){
   document.getElementById('dlg-text').textContent='« '+BERGER_PHRASES[Math.floor(rand(0,BERGER_PHRASES.length))]+' »';
   renderTrades();
   document.getElementById('dialog').style.display='block';
+  applyCursor(); // dialogue ouvert : curseur visible pour cliquer les options
 }
 function closeDialog(){
   state.dialog=false;
   document.getElementById('dialog').style.display='none';
   if(state.playing&&!state.paused)renderer.domElement.requestPointerLock?.();
+  applyCursor(); // retour en jeu : curseur masqué
 }
 function renderTrades(){
   const box=document.getElementById('dlg-trades');
@@ -3525,9 +3529,14 @@ function renderCity(){
     box.appendChild(div);
   }
 }
+// masque le curseur système dès qu'on joue activement (seule la croix reste) ; le montre en menu/dialogue/mort
+function applyCursor(){
+  document.body.classList.toggle('nocursor',state.playing&&!state.paused&&!state.dialog&&!player.dead);
+}
 function syncMenuVisibility(){
   overlay.style.display=state.paused?'flex':'none';
   document.body.classList.toggle('in-menu',state.paused);
+  applyCursor();
   if(state.paused){
     showView(state.menuView||'main'); // respecte le panneau demandé (fabrication/empire/…)
     $('btn-play').innerHTML=state.firstPlay?'▶ &nbsp;Jouer':'▶ &nbsp;Reprendre';
@@ -4031,6 +4040,7 @@ function frame(now){
   let dt=Math.min((now-last)/1000,.1);
   last=now;
   const t=now/1000;
+  applyCursor(); // curseur système masqué en jeu actif (seule la croix reste ; utile sans pointer lock)
   // entrées
   input.mx=input.mz=0;input.jump=input.sprint=input.mine=input.place=false;
   if(state.playing&&!state.paused&&!player.dead&&!player.dying&&!state.dialog)computeInput();
