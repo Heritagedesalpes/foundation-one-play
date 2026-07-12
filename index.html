@@ -384,7 +384,7 @@ const V3=THREE.Vector3;
 const S_KEY='blocmonde_settings_v2';
 const DEFAULTS={
   fov:75, sens:1, gpSens:1, rd:8, dayMin:8, volume:.6,
-  shadows:true, clouds:true, bob:true, particles:true, invertY:false,
+  shadows:true, clouds:true, bob:true, particles:true, invertY:false, bloom:true,
   lookMove:true, autoJump:true, mode:'survie', v:6, tuto:true,
 };
 let settings={...DEFAULTS};
@@ -3678,6 +3678,7 @@ const SETTING_DEFS=[
   {k:'dayMin',type:'range',label:'Durée du jour',min:2,max:60,step:1,fmt:v=>v>=60?'1 h':(v%60===0?(v/60)+' h':v+' min')},
   {k:'volume',type:'range',label:'Volume',min:0,max:1,step:.05,fmt:v=>Math.round(v*100)+'%'},
   {k:'shadows',type:'toggle',label:'Ombres portées'},
+  {k:'bloom',type:'toggle',label:'Effets lumineux (bloom)'},
   {k:'clouds',type:'toggle',label:'Nuages'},
   {k:'bob',type:'toggle',label:'Balancement caméra'},
   {k:'particles',type:'toggle',label:'Particules'},
