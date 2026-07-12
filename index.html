@@ -3234,8 +3234,14 @@ function computeInput(){
   input.mine=leftHeld;
   input.place=rightHeld;
 }
+// touches consommées par le jeu : on absorbe leur défaut pour éviter le "bip" système (WKWebView macOS),
+// surtout en auto-répétition quand une touche de déplacement reste enfoncée. On préserve les raccourcis ⌘/Ctrl.
+const HANDLED_KEYS=new Set(['KeyW','KeyA','KeyS','KeyD','KeyZ','KeyQ','KeyE','KeyF','KeyC','KeyB','KeyI','KeyV','KeyR',
+  'Space','ShiftLeft','ShiftRight','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+  'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','F3']);
 document.addEventListener('keydown',e=>{
-  if(e.code==='F3'){e.preventDefault();const d=document.getElementById('debug');d.style.display=d.style.display==='block'?'none':'block';return;}
+  if(HANDLED_KEYS.has(e.code)&&!e.metaKey&&!e.ctrlKey)e.preventDefault();
+  if(e.code==='F3'){const d=document.getElementById('debug');d.style.display=d.style.display==='block'?'none':'block';return;}
   if(e.code==='Escape'){
     if(state.dialog){closeDialog();return;}
     if(state.playing&&!document.pointerLockElement){togglePause();return;}
@@ -3264,7 +3270,7 @@ document.addEventListener('keydown',e=>{
     if(n>=1&&n<=9){player.sel=n-1;updateHotbar();}
   }
 });
-document.addEventListener('keyup',e=>keys.delete(e.code));
+document.addEventListener('keyup',e=>{if(HANDLED_KEYS.has(e.code)&&!e.metaKey&&!e.ctrlKey)e.preventDefault();keys.delete(e.code);});
 document.addEventListener('wheel',e=>{
   if(!state.playing||state.paused)return;
   cycleSlot(e.deltaY>0?1:-1);
