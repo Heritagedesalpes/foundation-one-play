@@ -470,11 +470,12 @@ const SHAPE={[STONE_SLAB]:'slab',[PLANK_SLAB]:'slab'};
 const STAIR={}; // rempli après les tables : STAIR[id]={mat,dir}
 const BLOCK_TINT={}; // teinte [r,g,b] appliquée au rendu (laine colorée etc. — 1 tuile blanche + vertexColors)
 // objets (non plaçables, ids ≥ 100)
-const ITEM_COAL=100,STICK=101,IRON_ING=102,GOLD_ING=103,DIAMOND_GEM=104,RAW_IRON=105,RAW_GOLD=106;
-const PICK_WOOD=110,PICK_STONE=111,PICK_IRON=112,PICK_DIAMOND=113;
-const AXE_WOOD=114,AXE_STONE=115,AXE_IRON=116,AXE_DIAMOND=117;
-const SHOVEL_WOOD=118,SHOVEL_STONE=119,SHOVEL_IRON=120,SHOVEL_DIAMOND=121;
-const SWORD_WOOD=122,SWORD_STONE=123,SWORD_IRON=124,SWORD_DIAMOND=125;
+// FRONTIÈRE BLOC/OBJET repoussée à 200 (blocs 0-199 stockables en Uint8Array, objets ≥ 200) — libère 100-199 pour de nouveaux blocs
+const ITEM_COAL=200,STICK=201,IRON_ING=202,GOLD_ING=203,DIAMOND_GEM=204,RAW_IRON=205,RAW_GOLD=206;
+const PICK_WOOD=210,PICK_STONE=211,PICK_IRON=212,PICK_DIAMOND=213;
+const AXE_WOOD=214,AXE_STONE=215,AXE_IRON=216,AXE_DIAMOND=217;
+const SHOVEL_WOOD=218,SHOVEL_STONE=219,SHOVEL_IRON=220,SHOVEL_DIAMOND=221;
+const SWORD_WOOD=222,SWORD_STONE=223,SWORD_IRON=224,SWORD_DIAMOND=225;
 // [tuile côté, tuile dessus, tuile dessous]
 const TILES={
   [GRASS]:[1,0,2],[DIRT]:[2,2,2],[STONE]:[3,3,3],[SAND]:[4,4,4],[LOG]:[5,6,6],
@@ -546,14 +547,14 @@ function orientStair(id,yaw){
 const isSolid=b=>b!==AIR&&b!==WATER&&b!==TORCH&&b!==WIRE&&b!==LEVER;
 const occludes=b=>isSolid(b)&&b!==GLASS; // pour l'occlusion ambiante
 // outils : 3 familles × 4 paliers, chaque famille est efficace sur sa classe de blocs
-const toolKind=id=>(id>=110&&id<=113)?'pioche':(id>=114&&id<=117)?'hache':(id>=118&&id<=121)?'pelle':(id>=122&&id<=125)?'epee':null;
-const toolTierOf=id=>toolKind(id)?((id-110)%4)+1:0;
+const toolKind=id=>(id>=210&&id<=213)?'pioche':(id>=214&&id<=217)?'hache':(id>=218&&id<=221)?'pelle':(id>=222&&id<=225)?'epee':null;
+const toolTierOf=id=>toolKind(id)?((id-210)%4)+1:0;
 const TIER_SPEED=[0,2.5,4,6,8];
 const TIER_COLOR=['','#a97d4b','#9c9c9c','#dededd','#5cdbd5'];
 const TIER_LABEL=['','en bois','en pierre','en fer','en diamant'];
 const SWORD_ARMY=[0,2,3,4,5]; // une épée ARME un peu la cité, mais la vraie guerre exige des soldats (caserne) — plus de conquête à une seule épée
-const TOOLS=[113,112,111,110,117,116,115,114,121,120,119,118,125,124,123,122];
-[['Pioche',110],['Hache',114],['Pelle',118],['Épée',122]].forEach(([base,off])=>{
+const TOOLS=[213,212,211,210,217,216,215,214,221,220,219,218,225,224,223,222];
+[['Pioche',PICK_WOOD],['Hache',AXE_WOOD],['Pelle',SHOVEL_WOOD],['Épée',SWORD_WOOD]].forEach(([base,off])=>{
   for(let t=1;t<=4;t++)NAMES[off+t-1]=`${base} ${TIER_LABEL[t]}`;
 });
 const STONY=new Set([STONE,COBBLE,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE,ENERGY_ORE,FOUR,MOSSY,ICE]);
@@ -563,7 +564,7 @@ const ORE_TIER={[COAL_ORE]:1,[IRON_ORE]:2,[GOLD_ORE]:3,[DIAMOND_ORE]:3,[ENERGY_O
 const CREATIVE_PALETTE=[GRASS,DIRT,STONE,COBBLE,SAND,LOG,PLANKS,LEAVES,GLASS,TORCH,SNOW,DIAMOND_ORE,WIRE,LEVER,LAMP,ETABLI,FOUR];
 const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,STONE_SLAB,STONE_STAIR_PX,STONE_BRICKS,BRICKS,SANDSTONE,SAND,LOG,PLANKS,PLANK_SLAB,PLANK_STAIR_PX,BIRCH_PLANKS,SPRUCE_PLANKS,LEAVES,GLASS,TORCH,ETABLI,FOUR,SNOW,WIRE,LEVER,LAMP,COAL_ORE,IRON_ORE,GOLD_ORE,DIAMOND_ORE];
 // ---- Générateur DATA-DRIVEN de variantes de construction : dalle + 4 escaliers par matériau ----
-let _bidNext=44;                 // prochain id de bloc libre (< 100 ; 42-43 = planches bouleau/épicéa, objets ≥ 100)
+let _bidNext=44;                 // prochain id de bloc libre pour le générateur (dynamiques 44-89 ; blocs statiques d'enrichissement ≥ 100 ; objets ≥ 200)
 const GEN_RECIPES=[];            // recettes générées ici, injectées dans RECIPES après sa définition
 const SLAB_OF={stone:STONE_SLAB,planks:PLANK_SLAB}; // dalle (faîte) par matériau — étendu par le générateur
 function genBuildVariants(matKey,fullId,tile,matName){
@@ -641,7 +642,7 @@ function fbm3(x,y,z,s){
 }
 
 /* ============================== Atlas de textures 32px (original) ============================== */
-const ATLAS_W=8,ATLAS_H=5,TS=32;
+const ATLAS_W=8,ATLAS_H=12,TS=32; // 8×12 = 96 tuiles (0-39 utilisées, 40-95 libres pour l'enrichissement du monde) ; UV paramétrées par ATLAS_H
 const atlas=document.createElement('canvas');
 atlas.width=ATLAS_W*TS;atlas.height=ATLAS_H*TS;
 const actx=atlas.getContext('2d');
@@ -3509,7 +3510,7 @@ function updatePlacing(dt){
   if(!r.prev)return;
   const id=selectedId();
   if(id===undefined){placeFail('Rien à poser — sélectionne un bloc dans la barre');return;}
-  if(id>=100){placeFail('Cet objet ne se pose pas');return;} // objets et outils non plaçables
+  if(id>=200){placeFail('Cet objet ne se pose pas');return;} // objets et outils non plaçables (frontière 200)
   const[x,y,z]=r.prev;
   const cur=getBlock(x,y,z);
   if(!(cur===AIR||cur===WATER))return;
@@ -3537,10 +3538,10 @@ const RECIPES=[
   {out:[FOUR,1],ins:[[COBBLE,8]],station:'etabli'},
   // 12 outils : pioche/hache/pelle × bois/pierre/fer/diamant — sur établi
   ...[PLANKS,COBBLE,IRON_ING,DIAMOND_GEM].flatMap((m,i)=>[
-    {out:[110+i,1],ins:[[m,3],[STICK,2]],station:'etabli'},
-    {out:[114+i,1],ins:[[m,3],[STICK,2]],station:'etabli'},
-    {out:[118+i,1],ins:[[m,1],[STICK,2]],station:'etabli'},
-    {out:[122+i,1],ins:[[m,2],[STICK,1]],station:'etabli'}, // épée : arme
+    {out:[PICK_WOOD+i,1],  ins:[[m,3],[STICK,2]],station:'etabli'},
+    {out:[AXE_WOOD+i,1],   ins:[[m,3],[STICK,2]],station:'etabli'},
+    {out:[SHOVEL_WOOD+i,1],ins:[[m,1],[STICK,2]],station:'etabli'},
+    {out:[SWORD_WOOD+i,1], ins:[[m,2],[STICK,1]],station:'etabli'}, // épée : arme
   ]),
   {out:[LEVER,1],ins:[[STICK,1],[COBBLE,1]],station:'etabli'},
   {out:[LAMP,2],ins:[[WIRE,2],[GLASS,1]],station:'etabli'},
