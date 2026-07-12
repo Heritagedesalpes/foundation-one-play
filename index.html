@@ -3564,6 +3564,7 @@ try{
     if(st.emp){
       player.emp.age=st.emp.age||0;
       Object.assign(player.emp.res,st.emp.res||{});
+      for(const k in player.emp.res)if(!Number.isFinite(player.emp.res[k]))player.emp.res[k]=0; // désinfecte NaN/null d'anciennes sauvegardes
       player.emp.pop=st.emp.pop||0;player.emp.popCap=st.emp.popCap||5;
       player.emp.defense=st.emp.defense||0;player.emp.army=st.emp.army||0;
       Object.assign(player.emp.jobs,st.emp.jobs||{});
@@ -3759,12 +3760,12 @@ function empProductionPerTick(){
   for(const key in RECRUITS){
     const r=RECRUITS[key];
     if(!r.prod)continue;
-    for(const res in r.prod)out[res]+=r.prod[res]*e.jobs[key];
+    for(const res in r.prod)out[res]+=r.prod[res]*(e.jobs[key]||0);
   }
   for(const key in BUILDINGS){
     const b=BUILDINGS[key];
     if(!b.prodBonus)continue;
-    for(const res in b.prodBonus)out[res]+=b.prodBonus[res]*e.builds[key];
+    for(const res in b.prodBonus)out[res]+=b.prodBonus[res]*(e.builds[key]||0); // ||0 : les bâtiments d'innovation d'âge ne sont pas dans l'init e.builds → évite NaN
   }
   for(const k in out)out[k]*=m;
   out.nourriture-=e.pop*.35; // les villageois consomment de la nourriture
