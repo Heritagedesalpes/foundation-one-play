@@ -2185,6 +2185,21 @@ const SPECIES={
     const hoe=part(g.armR,.05,.44,.05,0x6b4a2a,0,-.3,.03); // manche de houe
     part(hoe,.05,.06,.2,0x8a9098,0,.2,.09);          // lame
   }},
+  soldat:{hw:.3,ph:1.72,speed:1.6,build(g){         // garde qui patrouille (cuirasse, casque, lance)
+    g.legL=part(g,.16,.5,.16,0x2a2f38,-.11,.25,0);
+    g.legR=part(g,.16,.5,.16,0x2a2f38,.11,.25,0);
+    part(g,.52,.68,.34,0x6b7078,0,.84,0);            // cuirasse
+    part(g,.58,.16,.4,0x8a9098,0,1.12,0);            // épaulières
+    g.armL=part(g,.13,.5,.13,0x6b7078,-.33,.95,0);
+    g.armR=part(g,.13,.5,.13,0xd9b48a,.33,.95,0);
+    g.head=part(g,.38,.38,.38,0xd9b48a,0,1.4,0);
+    part(g.head,.05,.05,.04,0x2a2a2a,-.09,.03,.2);
+    part(g.head,.05,.05,.04,0x2a2a2a,.09,.03,.2);
+    part(g.head,.44,.22,.46,0x8a9098,0,.14,0);       // casque
+    part(g.head,.07,.2,.07,0xb84a3a,0,.32,0);        // plumet rouge
+    const spear=part(g.armR,.045,1.1,.045,0x6b4a2a,0,-.2,.02); // hampe
+    part(spear,.08,.17,.08,0xc0c6cc,0,.6,0);         // fer de lance
+  }},
   marmotte:{hw:.25,ph:.62,speed:2.1,build(g){
     part(g,.42,.34,.6,0x8a6642,0,.28,0);
     g.head=part(g,.28,.26,.26,0x96724c,0,.44,.36);
@@ -2196,6 +2211,16 @@ const SPECIES={
   }},
 };
 const entities=[];
+// centre du village généré le plus proche d'une position (rayon maxD) — villages sur grille de 160
+function nearbyVillageCenter(x,z,maxD){
+  const cell=160,cx=Math.floor(x/cell),cz=Math.floor(z/cell);
+  let best=null,bd=maxD*maxD;
+  for(let dcx=-1;dcx<=1;dcx++)for(let dcz=-1;dcz<=1;dcz++){
+    const v=villageAt(cx+dcx,cz+dcz);
+    if(v){const d=(v.ox-x)**2+(v.oz-z)**2;if(d<bd){bd=d;best=v;}}
+  }
+  return best;
+}
 // cherche le tronc (LOG) le plus proche autour d'une position (pour les bûcherons)
 function findNearbyLog(pos,r){
   let best=null,bd=1e9;
@@ -2257,7 +2282,7 @@ class Entity{
     this.group=new THREE.Group();
     def.build(this.group);
     const label=kind==='berger'?'Berger '+BERGER_NAMES[Math.floor(rand(0,BERGER_NAMES.length))]:
-                (kind==='mouton'?'Mouton':kind==='bucheron'?'🪓 Bûcheron':kind==='mineur'?'⛏ Mineur':kind==='fermier'?'🌾 Fermier':'Marmotte');
+                (kind==='mouton'?'Mouton':kind==='bucheron'?'🪓 Bûcheron':kind==='mineur'?'⛏ Mineur':kind==='fermier'?'🌾 Fermier':kind==='soldat'?'🛡 Garde':'Marmotte');
     this.name=label;
     this.resident=kind==='berger'&&player.residents.includes(label);
     this.tag=textSprite(this.resident?'🏡 '+label:label);
@@ -2316,6 +2341,13 @@ class Entity{
           else{this.state='chop';this.chopT=rand(2.5,4);this.workCd=0;}
         }else if(this.timer<=0){this.state=this.state==='wander'?'idle':'wander';this.dir=rand(0,Math.PI*2);this.timer=rand(2,4);}
       }
+    }else if(this.kind==='soldat'){
+      // patrouille : va-et-vient autour du point de garde (centre du village / spawn)
+      if(!this.home)this.home={x:this.pos.x,z:this.pos.z};
+      if(!this.patrol||this.timer<=0){const a=rand(0,Math.PI*2),rr=rand(3,9);this.patrol={x:this.home.x+Math.cos(a)*rr,z:this.home.z+Math.sin(a)*rr};this.timer=rand(4,8);}
+      const dx=this.patrol.x-this.pos.x,dz=this.patrol.z-this.pos.z;
+      if(Math.hypot(dx,dz)>1.2){this.state='wander';this.facing=this.dir=Math.atan2(dx,dz);}
+      else this.state='idle';
     }else if(this.timer<=0){
       if(this.state==='wander'||this.state==='greet'){this.state='idle';this.timer=rand(1.2,3.5);}
       else{this.state='wander';this.dir=rand(0,Math.PI*2);this.timer=rand(2,5);}
@@ -2374,21 +2406,31 @@ function updateEntities(dt,pp){
   spawnCd-=dt;
   if(spawnCd<=0){
     spawnCd=2.5;
-    if(entities.length<14){
-      const a=rand(0,Math.PI*2),d=rand(16,42);
-      const x=Math.floor(pp.x+Math.cos(a)*d),z=Math.floor(pp.z+Math.sin(a)*d);
-      const h=terrainHeight(x,z);
-      if(h>SEA+2&&h<SNOWLINE&&getBlock(x,h,z)===GRASS){
-        const r=Math.random();
-        const cnt=k=>entities.reduce((n,e)=>n+(e.kind===k?1:0),0);
-        const c={x:x+.5,z:z+.5};
-        // travailleurs si la ressource est là (champ/arbres/pierre), sinon faune d'ambiance
+    if(entities.length<16){
+      const cnt=k=>entities.reduce((n,e)=>n+(e.kind===k?1:0),0);
+      const vc=nearbyVillageCenter(pp.x,pp.z,64); // "village vivant" si le joueur est proche d'un village
+      let x,z;
+      if(vc){const a=rand(0,Math.PI*2),d=rand(5,24);x=Math.floor(vc.ox+Math.cos(a)*d);z=Math.floor(vc.oz+Math.sin(a)*d);}
+      else{const a=rand(0,Math.PI*2),d=rand(16,42);x=Math.floor(pp.x+Math.cos(a)*d);z=Math.floor(pp.z+Math.sin(a)*d);}
+      const h=terrainHeight(x,z),surf=getBlock(x,h,z);
+      if(h>SEA+1&&h<SNOWLINE&&surf!==WATER&&surf!==AIR){
+        const r=Math.random(),c={x:x+.5,z:z+.5};
         let kind;
-        if(cnt('fermier')<3&&r<.3&&findNearbyFarm(c,16))kind='fermier';
-        else if(cnt('bucheron')<3&&r<.34&&findNearbyLog(c,12))kind='bucheron';
-        else if(cnt('mineur')<3&&r<.5&&findNearbyStone(c,12))kind='mineur';
-        else kind=r<.5?'berger':(r<.8?'mouton':'marmotte');
-        entities.push(new Entity(kind,x+.5,h+1,z+.5));
+        if(vc){ // autour d'un village : métiers groupés + garde
+          if(cnt('soldat')<2&&r<.22)kind='soldat';
+          else if(cnt('fermier')<3&&findNearbyFarm(c,16))kind='fermier';
+          else if(cnt('bucheron')<3&&findNearbyLog(c,14))kind='bucheron';
+          else if(cnt('mineur')<2&&findNearbyStone(c,12))kind='mineur';
+          else kind=r<.55?'berger':'mouton';
+        }else{ // ambiant hors village
+          if(cnt('fermier')<3&&r<.3&&findNearbyFarm(c,16))kind='fermier';
+          else if(cnt('bucheron')<3&&r<.34&&findNearbyLog(c,12))kind='bucheron';
+          else if(cnt('mineur')<3&&r<.5&&findNearbyStone(c,12))kind='mineur';
+          else kind=r<.5?'berger':(r<.8?'mouton':'marmotte');
+        }
+        const e=new Entity(kind,x+.5,h+1,z+.5);
+        if(kind==='soldat'&&vc)e.home={x:vc.ox,z:vc.oz}; // le garde patrouille le centre du village
+        entities.push(e);
       }
     }
   }
@@ -4150,6 +4192,7 @@ window.__debug={
   spawnBucheron:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('bucheron',x+.5,h+1,z+.5);entities.push(e);return{x,z,tree:findNearbyLog({x:x+.5,z:z+.5},12)};},
   spawnMineur:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('mineur',x+.5,h+1,z+.5);entities.push(e);return{x,z,rock:findNearbyStone({x:x+.5,z:z+.5},12)};},
   spawnFermier:()=>{const p=player.pos;const x=Math.round(p.x)+2,z=Math.round(p.z)+2;const h=terrainHeight(x,z);const e=new Entity('fermier',x+.5,h+1,z+.5);entities.push(e);return{x,z,farm:findNearbyFarm({x:x+.5,z:z+.5},16)};},
+  spawnSoldat:()=>{const p=player.pos;const x=Math.round(p.x)+2,z=Math.round(p.z)+2;const h=terrainHeight(x,z);const e=new Entity('soldat',x+.5,h+1,z+.5);e.home={x:Math.round(p.x),z:Math.round(p.z)};entities.push(e);return{x,z};},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
