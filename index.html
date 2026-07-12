@@ -1635,8 +1635,9 @@ let cloudMesh=null,cloudData=[];
   cloudMesh.visible=settings.clouds;
   scene.add(cloudMesh);
 }
-const SKY_DAY=new THREE.Color(0x7ec3e8),SKY_NIGHT=new THREE.Color(0x070b1e),SKY_DUSK=new THREE.Color(0xe8935a);
-const HORIZON_DAY=new THREE.Color(0xdfeef5);
+const SKY_DAY=new THREE.Color(0x63b0e6),SKY_NIGHT=new THREE.Color(0x070b1e),SKY_DUSK=new THREE.Color(0xe8935a);
+const HORIZON_DAY=new THREE.Color(0xdaebf4);
+const SUN_DAY=new THREE.Color(1,.96,.82),SUN_DUSK=new THREE.Color(1,.5,.22);
 const skyColor=new THREE.Color(),horizonColor=new THREE.Color();
 scene.fog=new THREE.Fog(0x7ec3e8,RDv*CHUNK*.45,RDv*CHUNK-4);
 // dôme de ciel en dégradé (remplace le fond uni)
@@ -1644,9 +1645,9 @@ const skyDome=new THREE.Mesh(
   new THREE.SphereGeometry(800,24,14),
   new THREE.ShaderMaterial({
     side:THREE.BackSide,depthWrite:false,fog:false,
-    uniforms:{top:{value:new THREE.Color(0x7ec3e8)},horizon:{value:new THREE.Color(0xdfeef5)}},
+    uniforms:{top:{value:new THREE.Color(0x63b0e6)},horizon:{value:new THREE.Color(0xdaebf4)},sunDir:{value:new THREE.Vector3(0,1,0)},sunCol:{value:new THREE.Color(1,.96,.82)}},
     vertexShader:'varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader:'uniform vec3 top;uniform vec3 horizon;varying vec3 vP;void main(){float h=normalize(vP).y;float t=clamp(h*1.5+.16,0.,1.);gl_FragColor=vec4(mix(horizon,top,pow(t,.75)),1.);}'
+    fragmentShader:'uniform vec3 top;uniform vec3 horizon;uniform vec3 sunDir;uniform vec3 sunCol;varying vec3 vP;void main(){vec3 d=normalize(vP);float t=clamp(d.y*1.5+.16,0.,1.);vec3 c=mix(horizon,top,pow(t,.75));float sd=max(dot(d,sunDir),0.);c+=sunCol*pow(sd,230.)*1.5;c+=sunCol*pow(sd,7.)*.45;c+=sunCol*pow(sd,2.)*.1;gl_FragColor=vec4(c,1.);}'
   })
 );
 skyDome.renderOrder=-9;
@@ -3968,6 +3969,8 @@ function updateSky(dt,pp){
   scene.fog.color.copy(horizonColor);
   skyDome.material.uniforms.top.value.copy(skyColor);
   skyDome.material.uniforms.horizon.value.copy(horizonColor);
+  skyDome.material.uniforms.sunDir.value.copy(sunDir);          // diffusion solaire dans le ciel
+  skyDome.material.uniforms.sunCol.value.copy(SUN_DAY).lerp(SUN_DUSK,dusk).multiplyScalar(clamp(sunH*1.6+.15,0,1));
   skyDome.position.copy(camera.position);
   // soleil
   sun.intensity=Math.max(0,sunH)*2.3+(sunH<0?.25:0);
