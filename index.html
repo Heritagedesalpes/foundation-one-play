@@ -2701,29 +2701,41 @@ function launchRaid(){
 const fillB=(x0,x1,y0,y1,z0,z1,id)=>{
   for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++)setBlock(x,y,z,id);
 };
+// toit à deux pentes (faîte le long de X) sur empreinte 5×5 : avant-toits (edge) + pignons pleins (fillMat)
+function stampGableRoof(x,z,eaveY,edge,fillMat){
+  for(let dz=-2;dz<=2;dz++){
+    const y=eaveY+(2-Math.abs(dz));
+    for(let dx=-2;dx<=2;dx++){
+      setBlock(x+dx,y,z+dz,edge);
+      for(let yy=eaveY;yy<y;yy++)setBlock(x+dx,yy,z+dz,(dx===-2||dx===2)?fillMat:AIR); // pignons pleins
+    }
+  }
+}
 function stampMaison(x,gy,z){
-  fillB(x-2,x+2,gy,gy,z-2,z+2,PLANKS);           // sol
-  fillB(x-2,x+2,gy+1,gy+5,z-2,z+2,AIR);          // dégage l'intérieur
-  for(let y=gy+1;y<=gy+4;y++){                    // murs
+  fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);           // fondation pierre
+  fillB(x-2,x+2,gy+1,gy+7,z-2,z+2,AIR);          // dégage l'intérieur + sous-toit
+  for(let y=gy+1;y<=gy+4;y++){                    // murs planches
     fillB(x-2,x+2,y,y,z-2,z-2,PLANKS);fillB(x-2,x+2,y,y,z+2,z+2,PLANKS);
     fillB(x-2,x-2,y,y,z-2,z+2,PLANKS);fillB(x+2,x+2,y,y,z-2,z+2,PLANKS);
   }
-  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+5,pz,pz,LOG);
-  fillB(x-2,x+2,gy+5,gy+5,z-2,z+2,LOG);           // toit
+  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+4,pz,pz,LOG); // poteaux
+  stampGableRoof(x,z,gy+5,LOG,PLANKS);           // toit à deux pentes en rondins
+  for(let y=gy+1;y<=gy+9;y++)setBlock(x+1,y,z-2,COBBLE); // cheminée pierre (traverse le toit)
   setBlock(x-2,gy+3,z,GLASS);setBlock(x+2,gy+3,z,GLASS);setBlock(x,gy+3,z-2,GLASS); // fenêtres
   setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
   setBlock(x-1,gy+1,z-1,TORCH);
 }
 function stampCaserne(x,gy,z){
   fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);
-  fillB(x-2,x+2,gy+1,gy+5,z-2,z+2,AIR);
-  for(let y=gy+1;y<=gy+4;y++){
+  fillB(x-2,x+2,gy+1,gy+7,z-2,z+2,AIR);
+  for(let y=gy+1;y<=gy+4;y++){                    // murs pierre
     fillB(x-2,x+2,y,y,z-2,z-2,COBBLE);fillB(x-2,x+2,y,y,z+2,z+2,COBBLE);
     fillB(x-2,x-2,y,y,z-2,z+2,COBBLE);fillB(x+2,x+2,y,y,z-2,z+2,COBBLE);
   }
-  fillB(x-2,x+2,gy+5,gy+5,z-2,z+2,PLANKS);
-  setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR);
-  fillB(x,x,gy+6,gy+8,z,z,LOG);setBlock(x,gy+8,z,TORCH); // mât + fanal
+  stampGableRoof(x,z,gy+5,LOG,COBBLE);           // toit à deux pentes, pignons pierre
+  setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
+  setBlock(x-2,gy+3,z,GLASS);setBlock(x+2,gy+3,z,GLASS); // meurtrières vitrées
+  fillB(x,x,gy+8,gy+10,z,z,LOG);setBlock(x,gy+10,z,TORCH); // mât + fanal au-dessus du toit
   setBlock(x-1,gy+1,z-1,TORCH);
 }
 function stampRempart(x,gy,z){
@@ -3867,6 +3879,7 @@ window.__debug={
   findLake:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const l=lakeAt(cx,cz);if(l)return{cx,cz,...l};}return null;},
   findStream:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const p=streamPath(cx,cz);if(p&&p.length>3)return{cx,cz,len:p.length,src:p[0],mid:p[(p.length/2)|0],end:p[p.length-1]};}return null;},
   findChalet:()=>{for(let r=1;r<60;r++)for(let cx=-r;cx<=r;cx++)for(let cz=-r;cz<=r;cz++){const c=chaletAt(cx,cz);if(c)return{cx,cz,...c};}return null;},
+  build:(kind,x,gy,z)=>{const p=player.pos;x=x??Math.round(p.x);gy=gy??Math.floor(p.y)-1;z=z??Math.round(p.z);(STAMPS[kind]||stampMaison)(x,gy,z);return{kind:kind||'maison',x,gy,z};},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
