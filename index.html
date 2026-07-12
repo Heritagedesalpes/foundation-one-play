@@ -3279,10 +3279,31 @@ function cycleSlot(d){
   player.sel=(player.sel+d+9)%9;
   updateHotbar();
 }
+/* ---- Capture de la souris : verrou NATIF (app macOS WKWebView) prioritaire, sinon Pointer Lock web ----
+   L'app native masque + fige le curseur et nous injecte les deltas via window.__nativeLook : regard illimité,
+   la souris ne sort jamais de la fenêtre. En navigateur normal, on garde le Pointer Lock web. */
+let nativeLocked=false;
+const nativeBridge=()=>window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.pointer;
+window.__setNativeLocked=b=>{nativeLocked=!!b;applyCursor();};      // appelé par l'app quand le verrou natif s'active/coupe
+window.__nativeLook=(dx,dy)=>{                                       // deltas souris injectés par l'app native
+  if(!state.playing||state.paused||state.dialog||player.dead)return;
+  const s=.0022*settings.sens;
+  player.yaw-=dx*s;
+  player.pitch-=dy*s*(settings.invertY?-1:1);
+  player.pitch=clamp(player.pitch,-Math.PI/2+.01,Math.PI/2-.01);
+};
+let _lookOn=false;
+function updateLook(){ // demande/relâche le verrou natif selon l'état de jeu (n'agit qu'au changement)
+  const active=state.playing&&!state.paused&&!state.dialog&&!player.dead;
+  if(active===_lookOn)return;
+  _lookOn=active;
+  const nb=nativeBridge();
+  if(nb){try{nb.postMessage(active?'lock':'unlock');}catch(_){}}
+  if(!active&&document.pointerLockElement)document.exitPointerLock?.();
+}
 document.addEventListener('mousemove',e=>{
-  // visée : avec pointer lock (normal) OU sans verrou en repli (WKWebView) — le mouvement de
-  // la souris fait tourner la vue dès qu'on joue. Un clic dans la vue tente de reprendre le verrou.
-  if(!state.playing||state.paused||player.dead||state.dialog)return;
+  // visée web (Pointer Lock ou repli). Si l'app native capture la souris, elle pilote le regard → on sort.
+  if(nativeLocked||!state.playing||state.paused||player.dead||state.dialog)return;
   const s=.0022*settings.sens;
   player.yaw-=e.movementX*s;
   player.pitch-=e.movementY*s*(settings.invertY?-1:1);
@@ -3290,8 +3311,8 @@ document.addEventListener('mousemove',e=>{
 });
 document.addEventListener('mousedown',e=>{
   if(!state.playing||state.paused||player.dead||state.dialog)return; // clics ignorés hors jeu
-  // tente de (re)capturer la souris si dispo ; sinon on joue quand même (visée sans verrou)
-  if(document.pointerLockElement!==renderer.domElement)try{renderer.domElement.requestPointerLock?.();}catch(_){}
+  // si l'app native ne capture pas déjà la souris, tente le Pointer Lock web (geste utilisateur)
+  if(!nativeLocked&&document.pointerLockElement!==renderer.domElement)try{renderer.domElement.requestPointerLock?.();}catch(_){}
   if(pendingBuild&&e.button===0){pendingBuild=null;toast('Construction annulée');return;} // clic gauche annule un plan d'empire armé
   if(e.button===0){leftHeld=true;player.swingT=0;}
   if(e.button===2){rightHeld=true;placeTimer=0;}
@@ -4047,6 +4068,7 @@ function frame(now){
   last=now;
   const t=now/1000;
   applyCursor(); // curseur système masqué en jeu actif (seule la croix reste ; utile sans pointer lock)
+  updateLook();  // demande/relâche le verrou souris natif selon l'état de jeu
   // entrées
   input.mx=input.mz=0;input.jump=input.sprint=input.mine=input.place=false;
   if(state.playing&&!state.paused&&!player.dead&&!player.dying&&!state.dialog)computeInput();
