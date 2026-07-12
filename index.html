@@ -565,9 +565,10 @@ const PLACE_ORDER=[DIRT,GRASS,COBBLE,STONE,STONE_SLAB,STONE_STAIR_PX,STONE_BRICK
 // ---- Générateur DATA-DRIVEN de variantes de construction : dalle + 4 escaliers par matériau ----
 let _bidNext=44;                 // prochain id de bloc libre (< 100 ; 42-43 = planches bouleau/épicéa, objets ≥ 100)
 const GEN_RECIPES=[];            // recettes générées ici, injectées dans RECIPES après sa définition
+const SLAB_OF={stone:STONE_SLAB,planks:PLANK_SLAB}; // dalle (faîte) par matériau — étendu par le générateur
 function genBuildVariants(matKey,fullId,tile,matName){
   const hard=HARDNESS[fullId]||1.4;
-  const slab=_bidNext++;
+  const slab=_bidNext++;SLAB_OF[matKey]=slab;
   SHAPE[slab]='slab';TILES[slab]=[tile,tile,tile];NAMES[slab]='Dalle — '+matName;HARDNESS[slab]=hard;TRANSPARENT.add(slab);
   STAIR_ORIENT[matKey]={};
   const sids=[];
@@ -601,6 +602,8 @@ const WOOL_TILE=39, WOOL_IDS=[];
                         :{out:[id,1],ins:[[WOOL_IDS[0],1]],station:'etabli'}); // teinture : blanche → couleur
   PLACE_ORDER.push(id);
 });
+// alias nommés des laines les plus utilisées par les stamps (bannières, toits colorés)
+const WOOL_WHITE=WOOL_IDS[0],WOOL_YELLOW=WOOL_IDS[4],WOOL_RED=WOOL_IDS[14],WOOL_BLUE=WOOL_IDS[11],WOOL_GREEN=WOOL_IDS[13],WOOL_BLACK=WOOL_IDS[15];
 
 /* ============================== Bruit (2D + 3D) ============================== */
 function hash2(x,z,s){
@@ -1194,7 +1197,7 @@ function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondati
   // dégage l'emprise (arbres/terrain) + fondation pierre
   for(let x=hx-wx;x<=hx+wx;x++)for(let z=hz-wz;z<=hz+wz;z++){
     for(let y=hy+1;y<=ridge+3;y++)setW(x,y,z,AIR);
-    setW(x,hy,z,COBBLE);
+    setW(x,hy,z,STONE_BRICKS); // fondation en pierre taillée
   }
   // murs planches + poteaux d'angle en rondins
   for(let y=hy+1;y<=wt;y++){
@@ -1206,11 +1209,12 @@ function stampHouse(setW,hx,hz,hy,withBench){      // maison réaliste : fondati
   // porte (sud, 2 de haut) + fenêtres (verre)
   setW(hx,hy+1,hz+wz,AIR);setW(hx,hy+2,hz+wz,AIR);
   setW(hx,hy+2,hz-wz,GLASS);setW(hx-wx,hy+2,hz,GLASS);setW(hx+wx,hy+2,hz,GLASS);
-  // TOIT EN PENTE (faîte le long de X, rondins, débord) + pignons pleins
-  for(let L=0;L<=wz;L++){
-    const y=wt+1+L;
-    for(let x=hx-wx-1;x<=hx+wx+1;x++){ setW(x,y,hz-wz+L,LOG); setW(x,y,hz+wz-L,LOG); }
-    for(let z=hz-wz+L+1;z<=hz+wz-L-1;z++){ setW(hx-wx,y,z,PLANKS); setW(hx+wx,y,z,PLANKS); }
+  // TOIT EN PENTE LISSE avec ESCALIERS (faîte le long de X, débord d'1 en x) + pignons pleins
+  const S_PZ=STAIR_ORIENT['planks']['pz'],S_NZ=STAIR_ORIENT['planks']['nz'];
+  for(let z=hz-wz;z<=hz+wz;z++){
+    const dz=Math.abs(z-hz),yTop=wt+1+(wz-dz);
+    for(let x=hx-wx-1;x<=hx+wx+1;x++)setW(x,yTop,z, z<hz?S_PZ:(z>hz?S_NZ:PLANK_SLAB)); // pentes en escaliers, faîte en dalle
+    for(let y=wt+1;y<yTop;y++){setW(hx-wx,y,z,PLANKS);setW(hx+wx,y,z,PLANKS);}          // pignons pleins
   }
   // cheminée en pierre (coin arrière) dépassant du toit + âtre ouvert
   const cpx=hx-wx+1,cpz=hz-wz+1;
@@ -3069,40 +3073,43 @@ const fillB=(x0,x1,y0,y1,z0,z1,id)=>{
   for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++)setBlock(x,y,z,id);
 };
 // toit à deux pentes (faîte le long de X) sur empreinte 5×5 : avant-toits (edge) + pignons pleins (fillMat)
-function stampGableRoof(x,z,eaveY,edge,fillMat){
-  for(let dz=-2;dz<=2;dz++){
-    const y=eaveY+(2-Math.abs(dz));
-    for(let dx=-2;dx<=2;dx++){
-      setBlock(x+dx,y,z+dz,edge);
-      for(let yy=eaveY;yy<y;yy++)setBlock(x+dx,yy,z+dz,(dx===-2||dx===2)?fillMat:AIR); // pignons pleins
-    }
+// toit à DEUX PENTES en ESCALIERS (faîte le long de X à z=cz, débord d'1 en x) ; pignons pleins en fillMat
+function roofGable(cx,cz,eaveY,hx,hz,matKey,fillMat){
+  const S=STAIR_ORIENT[matKey]||STAIR_ORIENT.planks, slab=(SLAB_OF[matKey]??PLANK_SLAB);
+  for(let z=cz-hz;z<=cz+hz;z++){
+    const dz=Math.abs(z-cz),yTop=eaveY+(hz-dz);
+    for(let x=cx-hx-1;x<=cx+hx+1;x++)setBlock(x,yTop,z, z<cz?S.pz:(z>cz?S.nz:slab)); // pentes escaliers, faîte en dalle
+    for(let y=eaveY;y<yTop;y++){setBlock(cx-hx,y,z,fillMat);setBlock(cx+hx,y,z,fillMat);}  // pignons triangulaires pleins
   }
 }
-function stampMaison(x,gy,z){
-  fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);           // fondation pierre
-  fillB(x-2,x+2,gy+1,gy+7,z-2,z+2,AIR);          // dégage l'intérieur + sous-toit
-  for(let y=gy+1;y<=gy+4;y++){                    // murs planches
+function stampMaison(x,gy,z){                      // maison de colon : pierre taillée + planches, toit en pente
+  fillB(x-2,x+2,gy,gy,z-2,z+2,STONE_BRICKS);      // fondation en pierre taillée
+  fillB(x-2,x+2,gy+1,gy+8,z-2,z+2,AIR);           // dégage l'intérieur + sous-toit
+  for(let y=gy+1;y<=gy+4;y++){                     // murs planches
     fillB(x-2,x+2,y,y,z-2,z-2,PLANKS);fillB(x-2,x+2,y,y,z+2,z+2,PLANKS);
     fillB(x-2,x-2,y,y,z-2,z+2,PLANKS);fillB(x+2,x+2,y,y,z-2,z+2,PLANKS);
   }
-  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+4,pz,pz,LOG); // poteaux
-  stampGableRoof(x,z,gy+5,LOG,PLANKS);           // toit à deux pentes en rondins
-  for(let y=gy+1;y<=gy+9;y++)setBlock(x+1,y,z-2,COBBLE); // cheminée pierre (traverse le toit)
+  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+4,pz,pz,LOG); // poteaux d'angle
+  roofGable(x,z,gy+5,2,2,'planks',PLANKS);        // toit à deux pentes en escaliers de planches
+  for(let y=gy+1;y<=gy+8;y++)setBlock(x+1,y,z-2,STONE_BRICKS); // cheminée (traverse le toit)
   setBlock(x-2,gy+3,z,GLASS);setBlock(x+2,gy+3,z,GLASS);setBlock(x,gy+3,z-2,GLASS); // fenêtres
-  setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
+  setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte (sud)
   setBlock(x-1,gy+1,z-1,TORCH);
 }
-function stampCaserne(x,gy,z){
-  fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);
-  fillB(x-2,x+2,gy+1,gy+7,z-2,z+2,AIR);
-  for(let y=gy+1;y<=gy+4;y++){                    // murs pierre
-    fillB(x-2,x+2,y,y,z-2,z-2,COBBLE);fillB(x-2,x+2,y,y,z+2,z+2,COBBLE);
-    fillB(x-2,x-2,y,y,z-2,z+2,COBBLE);fillB(x+2,x+2,y,y,z-2,z+2,COBBLE);
+function stampCaserne(x,gy,z){                     // caserne : murs pavé, toit pierre, bannière
+  fillB(x-2,x+2,gy,gy,z-2,z+2,STONE_BRICKS);
+  fillB(x-2,x+2,gy+1,gy+8,z-2,z+2,AIR);
+  for(let y=gy+1;y<=gy+4;y++){                     // murs pierre taillée + chaînage d'angle en pavé
+    fillB(x-2,x+2,y,y,z-2,z-2,STONE_BRICKS);fillB(x-2,x+2,y,y,z+2,z+2,STONE_BRICKS);
+    fillB(x-2,x-2,y,y,z-2,z+2,STONE_BRICKS);fillB(x+2,x+2,y,y,z-2,z+2,STONE_BRICKS);
   }
-  stampGableRoof(x,z,gy+5,LOG,COBBLE);           // toit à deux pentes, pignons pierre
+  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+5,pz,pz,COBBLE); // tourelles d'angle
+  roofGable(x,z,gy+5,2,2,'stonebricks',STONE_BRICKS); // toit à deux pentes en escaliers de pierre
   setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
   setBlock(x-2,gy+3,z,GLASS);setBlock(x+2,gy+3,z,GLASS); // meurtrières vitrées
-  fillB(x,x,gy+8,gy+10,z,z,LOG);setBlock(x,gy+10,z,TORCH); // mât + fanal au-dessus du toit
+  fillB(x,x,gy+5,gy+10,z,z,LOG);                  // mât enraciné au faîte, traversant le toit
+  for(let y=gy+8;y<=gy+10;y++)setBlock(x+1,y,z,WOOL_RED); // bannière rouge (guerre)
+  setBlock(x,gy+11,z,TORCH);
   setBlock(x-1,gy+1,z-1,TORCH);
 }
 function stampRempart(x,gy,z){
@@ -3110,15 +3117,21 @@ function stampRempart(x,gy,z){
   const dx=h?1:0,dz=h?0:1; // orienté selon le regard
   for(let i=-2;i<=2;i++){
     const bx=x+dx*i,bz=z+dz*i;
-    fillB(bx,bx,gy,gy+3,bz,bz,COBBLE);
-    if((i&1)===0)setBlock(bx,gy+4,bz,COBBLE); // créneaux
+    fillB(bx,bx,gy,gy+3,bz,bz,STONE_BRICKS);
+    if((i&1)===0)setBlock(bx,gy+4,bz,STONE_BRICKS); // merlons
   }
 }
-function stampTour(x,gy,z){
-  fillB(x-1,x+1,gy,gy+7,z-1,z+1,COBBLE);
-  fillB(x,x,gy+1,gy+6,z,z,AIR); // creux central
-  for(const[cx,cz]of[[x-1,z-1],[x+1,z-1],[x-1,z+1],[x+1,z+1]])setBlock(cx,gy+8,cz,COBBLE);
-  setBlock(x,gy+8,z,TORCH);
+function stampTour(x,gy,z){                        // tour de guet en pierre taillée + hourds
+  fillB(x-1,x+1,gy,gy+8,z-1,z+1,STONE_BRICKS);
+  fillB(x,x,gy+1,gy+7,z,z,AIR);                    // creux central (escalier virtuel)
+  setBlock(x,gy+1,z+1,AIR);setBlock(x,gy+2,z+1,AIR); // porte
+  setBlock(x-1,gy+4,z,GLASS);setBlock(x+1,gy+4,z,GLASS);setBlock(x,gy+4,z-1,GLASS); // meurtrières
+  for(let i=-1;i<=1;i++){                          // couronne crénelée
+    setBlock(x+i,gy+9,z-1,STONE_BRICKS);setBlock(x+i,gy+9,z+1,STONE_BRICKS);
+    setBlock(x-1,gy+9,z+i,STONE_BRICKS);setBlock(x+1,gy+9,z+i,STONE_BRICKS);
+  }
+  for(const[cx,cz]of[[x-1,z-1],[x+1,z-1],[x-1,z+1],[x+1,z+1]])setBlock(cx,gy+10,cz,COBBLE); // guérites d'angle
+  setBlock(x,gy+9,z,TORCH);
 }
 function stampFerme(x,gy,z){
   fillB(x-2,x+2,gy,gy,z-2,z+2,GRASS); // champ (l'herbe génère blé/fleurs)
@@ -3152,22 +3165,25 @@ function stampFoyer(x,gy,z){ // feu de camp (innovation du Paléolithique)
   for(const[dx,dz]of[[1,0],[-1,0],[0,1],[0,-1]])setBlock(x+dx,gy,z+dz,COBBLE); // cercle de pierres
   setBlock(x,gy,z,LOG);setBlock(x,gy+1,z,TORCH);                               // bûche + flamme
 }
-function stampMonument(x,gy,z){ // obélisque de pierre (innovations antiques/médiévales)
-  fillB(x-1,x+1,gy,gy+1,z-1,z+1,COBBLE);          // socle 3×3
-  for(let y=gy+2;y<=gy+6;y++)setBlock(x,y,z,COBBLE); // fût
-  setBlock(x,gy+7,z,GLASS);setBlock(x,gy+8,z,TORCH); // sommet lumineux
+function stampMonument(x,gy,z){ // obélisque de grès sur socle de pierre taillée (innovations antiques/médiévales)
+  fillB(x-1,x+1,gy,gy+1,z-1,z+1,STONE_BRICKS);    // socle 3×3
+  for(const[cx,cz]of[[x-1,z-1],[x+1,z-1],[x-1,z+1],[x+1,z+1]])setBlock(cx,gy+2,cz,SANDSTONE); // gradins d'angle
+  for(let y=gy+2;y<=gy+7;y++)setBlock(x,y,z,SANDSTONE); // fût de grès
+  setBlock(x,gy+8,z,GLASS);setBlock(x,gy+9,z,TORCH); // pyramidion lumineux
 }
-function stampUsine(x,gy,z){ // usine à vapeur + cheminée fumante (Âge Industriel)
-  fillB(x-2,x+2,gy,gy,z-2,z+2,COBBLE);
-  fillB(x-2,x+2,gy+1,gy+4,z-2,z+2,AIR);
-  for(let y=gy+1;y<=gy+3;y++){
-    fillB(x-2,x+2,y,y,z-2,z-2,COBBLE);fillB(x-2,x+2,y,y,z+2,z+2,COBBLE);
-    fillB(x-2,x-2,y,y,z-2,z+2,COBBLE);fillB(x+2,x+2,y,y,z-2,z+2,COBBLE);
+function stampUsine(x,gy,z){ // manufacture à vapeur : murs de brique, cheminée fumante (Âge Industriel)
+  fillB(x-2,x+2,gy,gy,z-2,z+2,STONE_BRICKS);      // dalle de fondation
+  fillB(x-2,x+2,gy+1,gy+5,z-2,z+2,AIR);
+  for(let y=gy+1;y<=gy+4;y++){
+    fillB(x-2,x+2,y,y,z-2,z-2,BRICKS);fillB(x-2,x+2,y,y,z+2,z+2,BRICKS);
+    fillB(x-2,x-2,y,y,z-2,z+2,BRICKS);fillB(x+2,x+2,y,y,z-2,z+2,BRICKS);
   }
-  fillB(x-2,x+2,gy+4,gy+4,z-2,z+2,PLANKS);        // toit plat industriel
+  for(const[px,pz]of[[x-2,z-2],[x+2,z-2],[x-2,z+2],[x+2,z+2]])fillB(px,px,gy+1,gy+4,pz,pz,STONE_BRICKS); // chaînage d'angle
+  fillB(x-2,x+2,gy+5,gy+5,z-2,z+2,STONE_SLAB);    // toit-terrasse en dalles
   setBlock(x,gy+1,z+2,AIR);setBlock(x,gy+2,z+2,AIR); // porte
-  setBlock(x-2,gy+2,z,GLASS);setBlock(x+2,gy+2,z,GLASS);
-  for(let y=gy+3;y<=gy+9;y++)setBlock(x+1,y,z-1,COBBLE); // cheminée
+  fillB(x-2,x-2,gy+2,gy+3,z-1,z+1,GLASS);fillB(x+2,x+2,gy+2,gy+3,z-1,z+1,GLASS); // baies vitrées d'atelier
+  for(let y=gy+3;y<=gy+11;y++)fillB(x+1,x+1,y,y,z-1,z-1,BRICKS); // haute cheminée de brique
+  setBlock(x+1,gy+11,z-1,COBBLE);
 }
 function stampArcologie(x,gy,z){ // tour de verre (informatique / néo-futuriste)
   fillB(x-1,x+1,gy,gy,z-1,z+1,COBBLE);
