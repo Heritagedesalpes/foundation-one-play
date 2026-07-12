@@ -214,6 +214,10 @@
     background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700;
   }
   .recipe button:disabled{opacity:.32;cursor:default;}
+  #craft-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 4px;}
+  .ctab{padding:5px 11px;border-radius:99px;border:1px solid var(--panel-border);cursor:pointer;background:rgba(255,255,255,.04);color:var(--muted);font-size:11.5px;font-weight:600;font-family:inherit;}
+  .ctab.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+  #recipes{max-height:min(52vh,440px);overflow-y:auto;}
   .chip{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:99px;border:1px solid rgba(255,255,255,.25);color:var(--muted);margin-left:6px;vertical-align:1px;}
   .chip.ok{border-color:var(--accent);color:var(--accent);}
 
@@ -307,6 +311,7 @@
     <div class="view" id="view-craft">
       <h2>Fabrication</h2>
       <div id="res-line"></div>
+      <div id="craft-tabs"></div>
       <div id="recipes"></div>
       <button class="btn" id="btn-back2">← Retour</button>
     </div>
@@ -4193,14 +4198,36 @@ function updateAir(){
 }
 
 // ---- Fabrication
+// catégorie d'une recette (dérivée de la sortie) pour le classement par onglets
+function recipeCat(r){
+  const out=r.out[0];
+  if(r.station==='four')return 'fonte';
+  if(toolKind(out))return 'outils';
+  if(SHAPE[out]==='slab'||SHAPE[out]==='stair')return 'construction';
+  if(BLOCK_TINT[out]!==undefined)return 'couleur';
+  if(out===PLANKS||out===BIRCH_PLANKS||out===SPRUCE_PLANKS||out===STICK)return 'bois';
+  if(out===STONE||out===COBBLE||out===BRICKS||out===SANDSTONE||out===STONE_BRICKS||out===GLASS)return 'pierre';
+  return 'divers';
+}
+let craftCat='tous';
+const CRAFT_CATS=[['tous','Tous'],['construction','Construction'],['couleur','Couleurs'],['bois','Bois'],['pierre','Pierre'],['outils','Outils'],['fonte','Fonte'],['divers','Divers']];
 function renderCraft(){
   const res=$('res-line');
   const owned=Object.entries(player.inv).map(([id,n])=>`${NAMES[id]||'?'} ×${n}`);
   res.textContent=owned.length?'Ressources : '+owned.join(' · '):'Aucune ressource — va miner !';
+  // onglets de catégories
+  const tabs=$('craft-tabs');tabs.innerHTML='';
+  CRAFT_CATS.forEach(([key,label])=>{
+    const t=document.createElement('button');t.className='ctab'+(craftCat===key?' active':'');t.textContent=label;
+    t.addEventListener('click',()=>{craftCat=key;SND.click();renderCraft();});
+    tabs.appendChild(t);
+  });
   const rec=$('recipes');
   rec.innerHTML='';
-  // recettes fabricables MAINTENANT en tete (fin de la mer de recettes grisees), index d'origine preserve
-  const order=RECIPES.map((_,i)=>i).sort((a,b)=>(canCraft(RECIPES[b])?1:0)-(canCraft(RECIPES[a])?1:0));
+  // filtre par onglet, puis recettes fabricables MAINTENANT en tete (index d'origine preserve)
+  const order=RECIPES.map((_,i)=>i)
+    .filter(i=>craftCat==='tous'||recipeCat(RECIPES[i])===craftCat)
+    .sort((a,b)=>(canCraft(RECIPES[b])?1:0)-(canCraft(RECIPES[a])?1:0));
   order.forEach(i=>{
     const r=RECIPES[i];
     const div=document.createElement('div');div.className='recipe';
