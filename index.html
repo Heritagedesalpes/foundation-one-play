@@ -2516,6 +2516,10 @@ const BUILDINGS={
   caserne:{nom:'Caserne', emoji:'🛡', cost:{bois:40,pierre:30,fer:3}, unlock:'soldat', bp:'caserne', age:1},
   rempart:{nom:'Rempart', emoji:'🧱', cost:{pierre:20},         defense:4, bp:'rempart'},
   tour:   {nom:'Tour',    emoji:'🗼', cost:{pierre:40,bois:15,fer:5}, defense:10, bp:'tour', age:2},
+  // Barrage hydroélectrique : à poser en travers d'un ruisseau/vallon. Retient l'eau (réservoir)
+  // et produit de l'énergie -> revenu en écus (hydroélectricité). Débloqué à la Cité (palier avancé
+  // du prototype ; un vrai âge industriel viendra étendre AGES).
+  barrage:{nom:'Barrage', emoji:'🌊', cost:{pierre:80,fer:8}, prodBonus:{ecus:1.6}, bp:'barrage', age:2, hint:'Pose-le en travers d’un ruisseau ou d’un vallon'},
 };
 const EMP=()=>player.emp;
 const ageMult=()=>AGES[player.emp.age].mult;
@@ -2761,7 +2765,27 @@ function stampFerme(x,gy,z){
   }
   setBlock(x,gy+1,z+2,AIR);
 }
-const STAMPS={maison:stampMaison,ferme:stampFerme,rempart:stampRempart,tour:stampTour,caserne:stampCaserne};
+function stampBarrage(x,gy,z){
+  // orientation : mur perpendiculaire au regard (comme le rempart) ; l'amont = vers le regard
+  const along=Math.abs(Math.cos(player.yaw))>=Math.abs(Math.sin(player.yaw));
+  const ax=along?1:0,az=along?0:1;                 // axe du mur (barrage large)
+  let fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw);
+  if(Math.abs(fx)>=Math.abs(fz)){fx=Math.sign(fx)||1;fz=0;}else{fz=Math.sign(fz)||1;fx=0;} // amont, snappé cardinal
+  const W=3,H=5,crest=gy+H;                         // mur de 7 de large, 5 de haut
+  for(let i=-W;i<=W;i++){                           // mur en pavé épais de 2 + passerelle en planches
+    const bx=x+ax*i,bz=z+az*i;
+    for(let t=0;t<2;t++)for(let y=gy;y<=crest;y++)setBlock(bx+fx*t,y,bz+fz*t,COBBLE);
+    setBlock(bx,crest,bz,PLANKS);setBlock(bx+fx,crest,bz+fz,PLANKS);
+  }
+  for(let i=-W+1;i<=W-1;i+=2)setBlock(x+ax*i-fx,gy+1,z+az*i-fz,ENERGY_ORE); // turbines (face aval)
+  const level=crest-1;                             // réservoir : inonde le bassin amont (remplit les creux d'AIR)
+  for(let i=-W;i<=W;i++)for(let j=2;j<=8;j++){
+    const cx=x+ax*i+fx*j,cz=z+az*i+fz*j;
+    for(let y=gy;y<=level;y++)if(getBlock(cx,y,cz)===AIR)setBlock(cx,y,cz,WATER);
+  }
+  toast('🌊 Barrage édifié — réservoir rempli, l’hydroélectricité enrichit ta cité');
+}
+const STAMPS={maison:stampMaison,ferme:stampFerme,rempart:stampRempart,tour:stampTour,caserne:stampCaserne,barrage:stampBarrage};
 let pendingBuild=null; // clé de bâtiment en attente de pose
 function armBuild(key){
   const b=BUILDINGS[key];
