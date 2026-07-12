@@ -2171,6 +2171,20 @@ const SPECIES={
     const pick=part(g.armR,.05,.42,.05,0x5a3a1e,0,-.3,.03); // manche
     part(pick,.34,.06,.06,0x8a9098,0,.2,.04);        // tête de pioche
   }},
+  fermier:{hw:.3,ph:1.7,speed:1.7,build(g){         // villageois fermier (chapeau de paille + houe)
+    g.legL=part(g,.16,.5,.16,0x6b5836,-.11,.25,0);
+    g.legR=part(g,.16,.5,.16,0x6b5836,.11,.25,0);
+    part(g,.5,.68,.32,0xb5651d,0,.84,0);             // torse brun-orangé
+    g.armL=part(g,.13,.5,.13,0xb5651d,-.32,.95,0);
+    g.armR=part(g,.13,.5,.13,0xd9b48a,.32,.95,0);
+    g.head=part(g,.38,.38,.38,0xd9b48a,0,1.4,0);
+    part(g.head,.05,.05,.04,0x2a2a2a,-.09,.03,.2);
+    part(g.head,.05,.05,.04,0x2a2a2a,.09,.03,.2);
+    part(g.head,.6,.05,.6,0xd9b74a,0,.2,0);          // chapeau de paille (large bord)
+    part(g.head,.32,.12,.32,0xc9a53a,0,.28,0);       // calotte
+    const hoe=part(g.armR,.05,.44,.05,0x6b4a2a,0,-.3,.03); // manche de houe
+    part(hoe,.05,.06,.2,0x8a9098,0,.2,.09);          // lame
+  }},
   marmotte:{hw:.25,ph:.62,speed:2.1,build(g){
     part(g,.42,.34,.6,0x8a6642,0,.28,0);
     g.head=part(g,.28,.26,.26,0x96724c,0,.44,.36);
@@ -2212,6 +2226,25 @@ function findNearbyStone(pos,r){
   }
   return best;
 }
+// cherche le champ (FARMLAND) le plus proche — pour les fermiers
+function findNearbyFarm(pos,r){
+  let best=null,bd=1e9;
+  const bx=Math.floor(pos.x),bz=Math.floor(pos.z);
+  for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+    const x=bx+dx,z=bz+dz,d=dx*dx+dz*dz;
+    if(d>=bd)continue;
+    const h=terrainHeight(x,z);
+    if(getBlock(x,h,z)===FARMLAND){best={x,z,y:h};bd=d;}
+  }
+  return best;
+}
+// métiers "travailleurs" : fonction de recherche de ressource + effet visuel de travail
+const WHEAT_COL=new THREE.Color(.95,.82,.3);
+const WORKER={
+  bucheron:{find:findNearbyLog,  r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,LOG,4)},
+  mineur:  {find:findNearbyStone,r:12, fx:(tx,ty,tz)=>spawnDebris(tx,ty,tz,STONE,4)},
+  fermier: {find:findNearbyFarm, r:16, fx:(tx,ty,tz)=>spawnParticles(tx,ty,tz,null,8,WHEAT_COL)},
+};
 class Entity{
   constructor(kind,x,y,z){
     this.kind=kind;
@@ -2224,7 +2257,7 @@ class Entity{
     this.group=new THREE.Group();
     def.build(this.group);
     const label=kind==='berger'?'Berger '+BERGER_NAMES[Math.floor(rand(0,BERGER_NAMES.length))]:
-                (kind==='mouton'?'Mouton':kind==='bucheron'?'🪓 Bûcheron':kind==='mineur'?'⛏ Mineur':'Marmotte');
+                (kind==='mouton'?'Mouton':kind==='bucheron'?'🪓 Bûcheron':kind==='mineur'?'⛏ Mineur':kind==='fermier'?'🌾 Fermier':'Marmotte');
     this.name=label;
     this.resident=kind==='berger'&&player.residents.includes(label);
     this.tag=textSprite(this.resident?'🏡 '+label:label);
@@ -2267,16 +2300,16 @@ class Entity{
         else{this.state='idle';sleeping=true;}
         this.timer=1;
       }else if(this.timer<=0){this.state=this.state==='idle'?'wander':'idle';this.dir=rand(0,Math.PI*2);this.timer=rand(2,5);}
-    }else if(this.kind==='bucheron'||this.kind==='mineur'){
-      // IA travailleur : trouver une ressource (arbre/pierre), s'en approcher, l'exploiter, recommencer
-      const isMine=this.kind==='mineur', debris=isMine?STONE:LOG, findFn=isMine?findNearbyStone:findNearbyLog;
+    }else if(WORKER[this.kind]){
+      // IA travailleur : trouver une ressource (arbre/pierre/champ), s'en approcher, l'exploiter, recommencer
+      const w=WORKER[this.kind];
       if(this.state==='chop'){
         this.chopT-=dt;this.workCd-=dt;
         if(this.target)this.facing=Math.atan2(this.target.x+.5-this.pos.x,this.target.z+.5-this.pos.z);
-        if(this.workCd<=0){spawnDebris(this.target.x,(this.target.y??this.pos.y+1)+.4,this.target.z,debris,4);this.workCd=.42;}
+        if(this.workCd<=0){w.fx(this.target.x,(this.target.y??this.pos.y+1)+.4,this.target.z);this.workCd=.42;}
         if(this.chopT<=0){this.state='idle';this.target=null;this.timer=rand(.6,1.4);}
       }else{
-        if(!this.target||this.timer<=0){this.target=findFn(this.pos,12);this.timer=rand(3,6);}
+        if(!this.target||this.timer<=0){this.target=w.find(this.pos,w.r);this.timer=rand(3,6);}
         if(this.target){
           const dx=this.target.x+.5-this.pos.x,dz=this.target.z+.5-this.pos.z;
           if(Math.hypot(dx,dz)>1.9){this.state='wander';this.facing=this.dir=Math.atan2(dx,dz);}
@@ -2319,7 +2352,7 @@ class Entity{
     if(this.group.armL){this.group.armL.rotation.x=-sw*.7;this.group.armR.rotation.x=sw*.7;}
     if(this.kind==='berger'&&this.state==='greet')this.group.armR.rotation.z=-2.4+Math.sin(performance.now()*.012)*.3;
     else if(this.group.armR)this.group.armR.rotation.z=0;
-    if((this.kind==='bucheron'||this.kind==='mineur')&&this.state==='chop'&&this.group.armR) // coups de hache/pioche
+    if(WORKER[this.kind]&&this.state==='chop'&&this.group.armR) // coups de hache/pioche/houe
       this.group.armR.rotation.x=-1.3+Math.abs(Math.sin(performance.now()*.011))*1.8;
     if(this.group.legs){
       this.group.legs.forEach((l,i)=>l.rotation.x=(i%2?sw:-sw));
@@ -2347,13 +2380,13 @@ function updateEntities(dt,pp){
       const h=terrainHeight(x,z);
       if(h>SEA+2&&h<SNOWLINE&&getBlock(x,h,z)===GRASS){
         const r=Math.random();
-        const nbuch=entities.reduce((n,e)=>n+(e.kind==='bucheron'?1:0),0);
-        const nmin=entities.reduce((n,e)=>n+(e.kind==='mineur'?1:0),0);
+        const cnt=k=>entities.reduce((n,e)=>n+(e.kind===k?1:0),0);
         const c={x:x+.5,z:z+.5};
-        // travailleurs si la ressource est là (arbres/pierre), sinon faune d'ambiance
+        // travailleurs si la ressource est là (champ/arbres/pierre), sinon faune d'ambiance
         let kind;
-        if(nbuch<3&&r<.34&&findNearbyLog(c,12))kind='bucheron';
-        else if(nmin<3&&r<.5&&findNearbyStone(c,12))kind='mineur';
+        if(cnt('fermier')<3&&r<.3&&findNearbyFarm(c,16))kind='fermier';
+        else if(cnt('bucheron')<3&&r<.34&&findNearbyLog(c,12))kind='bucheron';
+        else if(cnt('mineur')<3&&r<.5&&findNearbyStone(c,12))kind='mineur';
         else kind=r<.5?'berger':(r<.8?'mouton':'marmotte');
         entities.push(new Entity(kind,x+.5,h+1,z+.5));
       }
@@ -4116,6 +4149,7 @@ window.__debug={
   build:(kind,x,gy,z)=>{const p=player.pos;x=x??Math.round(p.x);gy=gy??Math.floor(p.y)-1;z=z??Math.round(p.z);(STAMPS[kind]||stampMaison)(x,gy,z);return{kind:kind||'maison',x,gy,z};},
   spawnBucheron:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('bucheron',x+.5,h+1,z+.5);entities.push(e);return{x,z,tree:findNearbyLog({x:x+.5,z:z+.5},12)};},
   spawnMineur:()=>{const p=player.pos;const x=Math.round(p.x)+3,z=Math.round(p.z)+3;const h=terrainHeight(x,z);const e=new Entity('mineur',x+.5,h+1,z+.5);entities.push(e);return{x,z,rock:findNearbyStone({x:x+.5,z:z+.5},12)};},
+  spawnFermier:()=>{const p=player.pos;const x=Math.round(p.x)+2,z=Math.round(p.z)+2;const h=terrainHeight(x,z);const e=new Entity('fermier',x+.5,h+1,z+.5);entities.push(e);return{x,z,farm:findNearbyFarm({x:x+.5,z:z+.5},16)};},
   set:(k,v)=>{settings[k]=v;applySetting(k);},
   play:()=>{state.cinematic=false;state.firstPlay=false;state.playing=true;state.paused=false;syncMenuVisibility();},
   give:(id,n)=>{invAdd(id,n??1);updateHotbar();},
